@@ -76,6 +76,7 @@
             {% assign tc_raw = entry.type_config | default: '' %}
             {% assign tc = blank %}
             {% if tc_raw != blank %}
+              {% # theme-check-disable-next-line UnknownFilter %}
               {% assign tc = tc_raw | json_parse %}
             {% endif %}
             {% if tc != blank %}
@@ -132,14 +133,26 @@
 {% assign margin_top = block.settings.margin_top | default: 20 %}
 {% assign margin_bottom = block.settings.margin_bottom | default: 20 %}
 
-{% assign show_hero = found_match and selected_block_type == 'hero' and selected_target_url != blank %}
-{% assign show_announcement = found_match and selected_block_type == 'announcement_bar' and selected_announcement_text != blank %}
-{% assign show_collection = found_match and selected_block_type == 'collection_banner' and selected_collection_handle != blank %}
-{% assign show_countdown = found_match and selected_block_type == 'countdown_banner' and selected_countdown_target != blank %}
-{% assign show_iwt = found_match and selected_block_type == 'image_with_text' and selected_iwt_image != blank %}
-{% assign show_video = found_match and selected_block_type == 'background_video' and (selected_video_url != blank or selected_video_file != blank) %}
-{% assign show_promo = found_match and selected_block_type == 'promo_card' and selected_promo_image != blank %}
-{% assign show_block = show_hero or show_announcement or show_collection or show_countdown or show_iwt or show_video or show_promo %}
+{% assign show_hero = false %}
+{% assign show_announcement = false %}
+{% assign show_collection = false %}
+{% assign show_countdown = false %}
+{% assign show_iwt = false %}
+{% assign show_video = false %}
+{% assign show_promo = false %}
+{% if found_match %}
+  {% if selected_block_type == 'hero' and selected_target_url != blank %}{% assign show_hero = true %}{% endif %}
+  {% if selected_block_type == 'announcement_bar' and selected_announcement_text != blank %}{% assign show_announcement = true %}{% endif %}
+  {% if selected_block_type == 'collection_banner' and selected_collection_handle != blank %}{% assign show_collection = true %}{% endif %}
+  {% if selected_block_type == 'countdown_banner' and selected_countdown_target != blank %}{% assign show_countdown = true %}{% endif %}
+  {% if selected_block_type == 'image_with_text' and selected_iwt_image != blank %}{% assign show_iwt = true %}{% endif %}
+  {% if selected_block_type == 'background_video' %}
+    {% if selected_video_url != blank or selected_video_file != blank %}{% assign show_video = true %}{% endif %}
+  {% endif %}
+  {% if selected_block_type == 'promo_card' and selected_promo_image != blank %}{% assign show_promo = true %}{% endif %}
+{% endif %}
+{% assign show_block = false %}
+{% if show_hero or show_announcement or show_collection or show_countdown or show_iwt or show_video or show_promo %}{% assign show_block = true %}{% endif %}
 
 <div class="scheduled-banner {% unless show_block %}scheduled-banner--hidden{% endunless %}" style="margin-top: {{ margin_top }}px; margin-bottom: {{ margin_bottom }}px;" {{ block.shopify_attributes }}>
   {% if show_hero %}

@@ -8,6 +8,16 @@ const TRIAL_DAYS = Number.parseInt(process.env.BILLING_TRIAL_DAYS ?? "7", 10);
 const TEST_MODE = process.env.BILLING_TEST === "true" || process.env.NODE_ENV !== "production";
 const APP_BASE_URL = process.env.BILLING_RETURN_URL || process.env.SHOPIFY_APP_URL;
 
+const SHOP_PLAN_QUERY = `#graphql
+  query GetShopPlan {
+    shop {
+      plan {
+        partnerDevelopment
+      }
+    }
+  }
+`;
+
 const CHECK_SUBSCRIPTION_QUERY = `#graphql
   query CheckBlockSchedulerSubscription {
     currentAppInstallation {
@@ -104,6 +114,19 @@ export async function ensureActiveSubscription(admin, request) {
       );
     }
     return null;
+  }
+
+  try {
+    const planResponse = await admin.graphql(SHOP_PLAN_QUERY);
+    const planJson = await planResponse.json();
+    const partnerDevelopment =
+      planJson?.data?.shop?.plan?.partnerDevelopment ?? false;
+    if (partnerDevelopment) {
+      console.log("[billing] Development store detected (partnerDevelopment=true); skipping billing.");
+      return null;
+    }
+  } catch (planError) {
+    console.warn("[billing] Could not check shop plan, proceeding with billing:", planError?.message);
   }
 
   const url = new URL(request.url);
