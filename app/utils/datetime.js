@@ -91,3 +91,36 @@ export const getDefaultDateBounds = (timeZone, fallbackOffsetMinutes) => {
   return { start, end };
 };
 
+/**
+ * Format a UTC ISO string for datetime-local input (yyyy-MM-ddTHH:mm) in store timezone.
+ * Store timezone is the source of truth for scheduling.
+ */
+export const formatUTCForDateTimeLocalInput = (utcIsoString, storeTimeZone) => {
+  if (!utcIsoString) return "";
+  const dt = DateTime.fromISO(utcIsoString, { zone: "UTC" });
+  if (!dt.isValid) return "";
+  const inStoreZone = dt.setZone(storeTimeZone || "UTC");
+  return inStoreZone.toFormat("yyyy-MM-dd'T'HH:mm");
+};
+
+/**
+ * Format a UTC ISO string for display in store timezone.
+ */
+export const formatUTCInStoreTime = (utcIsoString, storeTimeZone) => {
+  if (!utcIsoString) return "";
+  const dt = DateTime.fromISO(utcIsoString, { zone: "UTC" });
+  if (!dt.isValid) return "";
+  return dt.setZone(storeTimeZone || "UTC").toLocaleString(DateTime.DATETIME_MED);
+};
+
+/**
+ * Format a UTC ISO string for display in user's local timezone.
+ * Used for "In your timezone: X" note.
+ */
+export const formatUTCInUserTime = (utcIsoString, userTimeZone) => {
+  if (!utcIsoString) return "";
+  const dt = DateTime.fromISO(utcIsoString, { zone: "UTC" });
+  if (!dt.isValid) return "";
+  return dt.setZone(userTimeZone || "UTC").toLocaleString(DateTime.DATETIME_MED);
+};
+

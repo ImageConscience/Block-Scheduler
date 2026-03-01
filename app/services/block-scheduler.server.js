@@ -3,18 +3,12 @@ import { authenticate } from "../shopify.server";
 import { ensureActiveSubscription } from "../utils/billing.server";
 import { parseLocalDateTimeToUTC, getDefaultDateBounds } from "../utils/datetime";
 import { json } from "../utils/responses.server";
+import { logger } from "../utils/logger.server";
+import { ensureMetaobjectDefinition } from "./metaobjects.server";
+import { BLOCK_TYPES, DEFAULT_BLOCK_TYPE } from "../constants/block-types";
 
-const isDevEnvironment = process.env.NODE_ENV !== "production";
-const debugLog = (...args) => {
-  if (isDevEnvironment) {
-    console.log(...args);
-  }
-};
-const debugWarn = (...args) => {
-  if (isDevEnvironment) {
-    console.warn(...args);
-  }
-};
+const METAOBJECTS_PAGE_SIZE = 100;
+const FILES_PAGE_SIZE = 250;
 
 export const loader = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
@@ -25,6 +19,26 @@ export const loader = async ({ request }) => {
   }
 
   try {
+    // Fetch shop timezone (store timezone is source of truth for scheduling)
+    let storeTimeZone = "UTC";
+    try {
+      const shopResponse = await admin.graphql(
+        `#graphql
+        query GetShopTimezone {
+          shop {
+            ianaTimezone
+          }
+        }
+      `,
+      );
+      const shopJson = await shopResponse.json();
+      if (shopJson?.data?.shop?.ianaTimezone) {
+        storeTimeZone = shopJson.data.shop.ianaTimezone;
+      }
+    } catch (shopError) {
+      logger.warn("Could not fetch shop timezone:", shopError);
+    }
+
     const response = await admin.graphql(
       `#graphql
       query ListSchedulableEntities($first: Int!) {
@@ -54,19 +68,24 @@ export const loader = async ({ request }) => {
         }
       }
     `,
-      { variables: { first: 50 } },
+      { variables: { first: METAOBJECTS_PAGE_SIZE } },
     );
     const jsonResponse = await response.json();
 
-    debugLog("Loader GraphQL response:", JSON.stringify(jsonResponse, null, 2));
+    logger.debug("Loader GraphQL response:", JSON.stringify(jsonResponse, null, 2));
 
     if (jsonResponse?.errors) {
-      console.error("GraphQL errors in loader:", JSON.stringify(jsonResponse.errors, null, 2));
+      logger.error("GraphQL errors in loader:", JSON.stringify(jsonResponse.errors, null, 2));
       const errorMessages = jsonResponse.errors.map((e) => e.message).join(", ");
       if (errorMessages.includes("metaobject definition") || errorMessages.includes("type")) {
-        debugWarn("Metaobject definition may not exist yet. Returning empty entries.");
+        logger.warn("Metaobject definition may not exist yet. Returning empty entries.");
         return {
           entries: [],
+          mediaFiles: [],
+          videoFiles: [],
+          storeTimeZone,
+          blockTypes: BLOCK_TYPES,
+          defaultBlockType: DEFAULT_BLOCK_TYPE,
           error: "Metaobject definition not found. Please ensure the app has been properly installed.",
         };
       }
@@ -76,52 +95,89 @@ export const loader = async ({ request }) => {
     const entries = jsonResponse?.data?.metaobjects?.nodes ?? [];
 
     let mediaFiles = [];
+    let videoFiles = [];
     try {
-      const filesResponse = await admin.graphql(
-        `#graphql
-        query GetMediaFiles($first: Int!) {
-          files(first: $first, query: "media_type:image") {
-            edges {
-              node {
-                id
-                createdAt
-                ... on MediaImage {
-                  alt
-                  image {
-                    url
-                    width
-                    height
+      const [imgResponse, vidResponse] = await Promise.all([
+        admin.graphql(
+          `#graphql
+          query GetImageFiles($first: Int!) {
+            files(first: $first, query: "media_type:image") {
+              edges {
+                node {
+                  id
+                  createdAt
+                  ... on MediaImage {
+                    alt
+                    image { url width height }
                   }
                 }
               }
             }
           }
-        }
-      `,
-        { variables: { first: 250 } },
-      );
-      const filesJson = await filesResponse.json();
+        `,
+          { variables: { first: FILES_PAGE_SIZE } },
+        ),
+        admin.graphql(
+          `#graphql
+          query GetVideoFiles($first: Int!) {
+            files(first: $first, query: "media_type:video") {
+              edges {
+                node {
+                  id
+                  createdAt
+                  ... on MediaVideo {
+                    alt
+                    sources { url mimeType }
+                  }
+                }
+              }
+            }
+          }
+        `,
+          { variables: { first: 50 } },
+        ),
+      ]);
+      const imgJson = await imgResponse.json();
+      const vidJson = await vidResponse.json();
       mediaFiles =
-        filesJson?.data?.files?.edges?.map((edge) => ({
+        imgJson?.data?.files?.edges?.map((edge) => ({
           id: edge.node.id,
           url: edge.node.image?.url || "",
           alt: edge.node.alt || "",
           createdAt: edge.node.createdAt,
+          type: "image",
         })) || [];
-      mediaFiles.sort((a, b) => {
-        const dateA = new Date(a.createdAt || 0);
-        const dateB = new Date(b.createdAt || 0);
-        return dateB.getTime() - dateA.getTime();
-      });
+      videoFiles =
+        vidJson?.data?.files?.edges?.map((edge) => ({
+          id: edge.node.id,
+          url: edge.node.sources?.[0]?.url || "",
+          alt: edge.node.alt || "",
+          createdAt: edge.node.createdAt,
+          type: "video",
+        })) || [];
+      mediaFiles.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+      videoFiles.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
     } catch (error) {
-      console.error("Error loading media files:", error);
+      logger.error("Error loading media files:", error);
     }
 
-    return { entries, mediaFiles };
+    return {
+      entries,
+      mediaFiles,
+      videoFiles,
+      storeTimeZone,
+      blockTypes: BLOCK_TYPES,
+      defaultBlockType: DEFAULT_BLOCK_TYPE,
+    };
   } catch (error) {
-    console.error("Error loading schedulable entities:", error);
+    logger.error("Error loading schedulable entities:", error);
     return {
       entries: [],
+      mediaFiles: [],
+      videoFiles: [],
+      storeTimeZone: "UTC",
+      blockTypes: BLOCK_TYPES,
+      defaultBlockType: DEFAULT_BLOCK_TYPE,
       error: `Failed to load entries: ${error.message}`,
     };
   }
@@ -129,12 +185,12 @@ export const loader = async ({ request }) => {
 
 export const action = async ({ request }) => {
   try {
-    debugLog("[ACTION] ========== ACTION CALLED ==========");
-    debugLog("[ACTION] Request URL:", request.url);
-    debugLog("[ACTION] Request method:", request.method);
-    debugLog("[ACTION] Content-Type:", request.headers.get("content-type"));
-    debugLog("[ACTION] Accept header:", request.headers.get("accept"));
-    debugLog("[ACTION] X-Requested-With:", request.headers.get("x-requested-with"));
+    logger.debug("[ACTION] ========== ACTION CALLED ==========");
+    logger.debug("[ACTION] Request URL:", request.url);
+    logger.debug("[ACTION] Request method:", request.method);
+    logger.debug("[ACTION] Content-Type:", request.headers.get("content-type"));
+    logger.debug("[ACTION] Accept header:", request.headers.get("accept"));
+    logger.debug("[ACTION] X-Requested-With:", request.headers.get("x-requested-with"));
 
     const { admin } = await authenticate.admin(request);
 
@@ -146,14 +202,14 @@ export const action = async ({ request }) => {
     const acceptHeader = request.headers.get("accept") || "";
     const isFetcherRequest =
       acceptHeader.includes("*/*") || acceptHeader.includes("application/json") || !acceptHeader.includes("text/html");
-    debugLog("[ACTION] Is fetcher request:", isFetcherRequest);
+    logger.debug("[ACTION] Is fetcher request:", isFetcherRequest);
 
     const contentType = request.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
       const body = await request.json();
 
       if (body.intent === "delete") {
-        debugLog("[ACTION] Processing delete request for entry:", body.id);
+        logger.debug("[ACTION] Processing delete request for entry:", body.id);
         const deleteResponse = await admin.graphql(
           `#graphql
           mutation DeleteSchedulableEntity($id: ID!) {
@@ -173,7 +229,7 @@ export const action = async ({ request }) => {
 
         if (deleteJson?.errors) {
           const errors = deleteJson.errors.map((e) => e.message).join(", ");
-          console.error("[ACTION] GraphQL errors deleting entry:", errors);
+          logger.error("[ACTION] GraphQL errors deleting entry:", errors);
           return json({ error: `Failed to delete entry: ${errors}`, success: false });
         }
 
@@ -181,52 +237,61 @@ export const action = async ({ request }) => {
           const errors = deleteJson.data.metaobjectDelete.userErrors
             .map((e) => e.message)
             .join(", ");
-          console.error("[ACTION] User errors deleting entry:", errors);
+          logger.error("[ACTION] User errors deleting entry:", errors);
           return json({ error: `Failed to delete entry: ${errors}`, success: false });
         }
 
-        debugLog("[ACTION] Entry deleted successfully");
+        logger.debug("[ACTION] Entry deleted successfully");
         return json({ success: true, message: "Entry deleted successfully!" });
       }
 
       if (body.intent === "update") {
-        debugLog("[ACTION] Processing update request for entry:", body.id);
+        logger.debug("[ACTION] Processing update request for entry:", body.id);
 
         const fields = [];
-        const userTimeZone = typeof body.timezone === "string" && body.timezone.trim() ? body.timezone.trim() : null;
+        // Store timezone is source of truth for scheduling; fallback to user timezone for backward compat
+        const storeTimeZone =
+          (typeof body.store_timezone === "string" && body.store_timezone.trim()) ||
+          (typeof body.storeTimezone === "string" && body.storeTimezone.trim()) ||
+          (typeof body.timezone === "string" && body.timezone.trim()) ||
+          null;
         const rawOffset = body.timezoneOffset ?? body.timezone_offset;
-        const userTimezoneOffsetForUpdate =
+        const fallbackOffset =
           rawOffset !== undefined && rawOffset !== null && rawOffset !== "" && !Number.isNaN(Number(rawOffset))
             ? Number(rawOffset)
             : undefined;
 
         if (body.title) fields.push({ key: "title", value: body.title });
         if (body.positionId) fields.push({ key: "position_id", value: body.positionId });
+        if (body.blockType) fields.push({ key: "block_type", value: body.blockType });
+        if (body.typeConfig !== undefined && typeof body.typeConfig === "string") {
+          fields.push({ key: "type_config", value: body.typeConfig });
+        }
         if (body.headline !== undefined) fields.push({ key: "headline", value: body.headline || "" });
         if (body.description !== undefined) fields.push({ key: "description", value: body.description || "" });
 
         if (body.startAt !== undefined) {
           if (body.startAt) {
-            const formattedStart = parseLocalDateTimeToUTC(body.startAt, userTimeZone, userTimezoneOffsetForUpdate);
+            const formattedStart = parseLocalDateTimeToUTC(body.startAt, storeTimeZone, fallbackOffset);
             if (!formattedStart) {
               return json({ error: "Invalid Start Date format. Please ensure the date is valid.", success: false });
             }
             fields.push({ key: "start_at", value: formattedStart });
           } else {
-            const defaults = getDefaultDateBounds(userTimeZone, userTimezoneOffsetForUpdate);
+            const defaults = getDefaultDateBounds(storeTimeZone, fallbackOffset);
             fields.push({ key: "start_at", value: defaults.start });
           }
         }
 
         if (body.endAt !== undefined) {
           if (body.endAt) {
-            const formattedEnd = parseLocalDateTimeToUTC(body.endAt, userTimeZone, userTimezoneOffsetForUpdate);
+            const formattedEnd = parseLocalDateTimeToUTC(body.endAt, storeTimeZone, fallbackOffset);
             if (!formattedEnd) {
               return json({ error: "Invalid End Date format. Please ensure the date is valid.", success: false });
             }
             fields.push({ key: "end_at", value: formattedEnd });
           } else {
-            const defaults = getDefaultDateBounds(userTimeZone, userTimezoneOffsetForUpdate);
+            const defaults = getDefaultDateBounds(storeTimeZone, fallbackOffset);
             fields.push({ key: "end_at", value: defaults.end });
           }
         }
@@ -235,6 +300,86 @@ export const action = async ({ request }) => {
         if (body.mobileBanner) fields.push({ key: "mobile_banner", value: body.mobileBanner });
         if (body.targetUrl !== undefined) fields.push({ key: "target_url", value: body.targetUrl || "" });
         if (body.buttonText !== undefined) fields.push({ key: "button_text", value: body.buttonText || "" });
+
+        // Build type_config from type-specific fields
+        const blockType = body.blockType || "hero";
+        let typeConfigStr = body.typeConfig;
+        if (typeConfigStr === undefined || typeof typeConfigStr !== "string") {
+          if (blockType === "hero") {
+            typeConfigStr = JSON.stringify({
+              headline: body.headline || "",
+              description: body.description || "",
+              desktop_banner: body.desktopBanner || null,
+              mobile_banner: body.mobileBanner || null,
+              target_url: body.targetUrl || null,
+              button_text: body.buttonText || null,
+            });
+          } else if (blockType === "announcement_bar") {
+            typeConfigStr = JSON.stringify({
+              text: body.announcementText || "",
+              link: body.announcementLink || null,
+              bg_color: body.announcementBgColor || "#000000",
+              text_color: body.announcementTextColor || "#ffffff",
+            });
+          } else if (blockType === "collection_banner") {
+            typeConfigStr = JSON.stringify({
+              collection_handle: body.collectionHandle || "",
+              image: body.collectionBannerImage || null,
+              headline: body.collectionHeadline || null,
+              description: body.collectionDescription || null,
+              button_text: body.collectionButtonText || null,
+            });
+            if (body.collectionBannerImage) fields.push({ key: "desktop_banner", value: body.collectionBannerImage });
+          } else if (blockType === "countdown_banner") {
+            const targetDateUtc = body.countdownTargetDate
+              ? parseLocalDateTimeToUTC(body.countdownTargetDate, storeTimeZone, fallbackOffset)
+              : null;
+            typeConfigStr = JSON.stringify({
+              target_date: targetDateUtc,
+              headline: body.countdownHeadline || null,
+              subtext: body.countdownSubtext || null,
+              background_image: body.countdownBgImage || null,
+              background_color: body.countdownBgColor || "#000000",
+              text_color: body.countdownTextColor || "#ffffff",
+              target_url: body.countdownTargetUrl || null,
+              button_text: body.countdownButtonText || null,
+            });
+            if (body.countdownBgImage) fields.push({ key: "desktop_banner", value: body.countdownBgImage });
+          } else if (blockType === "image_with_text") {
+            typeConfigStr = JSON.stringify({
+              image: body.imageWithTextImage || null,
+              headline: body.imageWithTextHeadline || null,
+              description: body.imageWithTextDescription || null,
+              button_text: body.imageWithTextButtonText || null,
+              button_link: body.imageWithTextButtonLink || null,
+              layout: body.imageWithTextLayout || "image_left",
+            });
+            if (body.imageWithTextImage) fields.push({ key: "desktop_banner", value: body.imageWithTextImage });
+          } else if (blockType === "background_video") {
+            typeConfigStr = JSON.stringify({
+              video_url: body.videoUrl || null,
+              video_file: body.videoFile || null,
+              headline: body.videoHeadline || null,
+              description: body.videoDescription || null,
+              button_text: body.videoButtonText || null,
+              button_link: body.videoButtonLink || null,
+              overlay_opacity: Math.min(100, Math.max(0, Number(body.videoOverlayOpacity) || 50)),
+            });
+            if (body.videoFile) fields.push({ key: "desktop_banner", value: body.videoFile });
+          } else if (blockType === "promo_card") {
+            typeConfigStr = JSON.stringify({
+              image: body.promoCardImage || null,
+              title: body.promoCardTitle || null,
+              description: body.promoCardDescription || null,
+              cta_url: body.promoCardCtaUrl || null,
+              cta_text: body.promoCardCtaText || null,
+            });
+            if (body.promoCardImage) fields.push({ key: "desktop_banner", value: body.promoCardImage });
+          } else {
+            typeConfigStr = "{}";
+          }
+        }
+        if (typeConfigStr) fields.push({ key: "type_config", value: typeConfigStr });
 
         const updateResponse = await admin.graphql(
           `#graphql
@@ -265,7 +410,7 @@ export const action = async ({ request }) => {
 
         if (updateJson?.errors) {
           const errors = updateJson.errors.map((e) => e.message).join(", ");
-          console.error("[ACTION] GraphQL errors updating entry:", errors);
+          logger.error("[ACTION] GraphQL errors updating entry:", errors);
           return json({ error: `Failed to update entry: ${errors}`, success: false });
         }
 
@@ -273,16 +418,16 @@ export const action = async ({ request }) => {
           const errors = updateJson.data.metaobjectUpdate.userErrors
             .map((e) => e.message)
             .join(", ");
-          console.error("[ACTION] User errors updating entry:", errors);
+          logger.error("[ACTION] User errors updating entry:", errors);
           return json({ error: `Failed to update entry: ${errors}`, success: false });
         }
 
-        debugLog("[ACTION] Entry updated successfully");
+        logger.debug("[ACTION] Entry updated successfully");
         return json({ success: true, message: "Entry updated successfully!" });
       }
 
       if (body.intent === "toggleStatus") {
-        debugLog("[ACTION] Processing toggle status request for entry:", body.id, "to status:", body.status);
+        logger.debug("[ACTION] Processing toggle status request for entry:", body.id, "to status:", body.status);
 
         const toggleResponse = await admin.graphql(
           `#graphql
@@ -322,7 +467,7 @@ export const action = async ({ request }) => {
 
         if (toggleJson?.errors) {
           const errors = toggleJson.errors.map((e) => e.message).join(", ");
-          console.error("[ACTION] GraphQL errors toggling status:", errors);
+          logger.error("[ACTION] GraphQL errors toggling status:", errors);
           return json({ error: `Failed to toggle status: ${errors}`, success: false });
         }
 
@@ -330,22 +475,22 @@ export const action = async ({ request }) => {
           const errors = toggleJson.data.metaobjectUpdate.userErrors
             .map((e) => e.message)
             .join(", ");
-          console.error("[ACTION] User errors toggling status:", errors);
+          logger.error("[ACTION] User errors toggling status:", errors);
           return json({ error: `Failed to toggle status: ${errors}`, success: false });
         }
 
-        debugLog("[ACTION] Status toggled successfully");
+        logger.debug("[ACTION] Status toggled successfully");
         return json({ success: true, message: "Status updated successfully!" });
       }
     }
 
     const formData = await request.formData();
-    debugLog("[ACTION] FormData received, checking contents...");
+    logger.debug("[ACTION] FormData received, checking contents...");
 
     const formDataKeys = [];
     for (const [key, value] of formData.entries()) {
       formDataKeys.push(key);
-      debugLog(
+      logger.debug(
         "[ACTION] FormData key:",
         key,
         "value type:",
@@ -353,12 +498,12 @@ export const action = async ({ request }) => {
         value instanceof File ? `(${value.name}, ${value.size} bytes)` : "",
       );
     }
-    debugLog("[ACTION] All formData keys:", formDataKeys);
+    logger.debug("[ACTION] All formData keys:", formDataKeys);
 
     const file = formData.get("file");
     const hasTitle = formData.get("title");
 
-    debugLog(
+    logger.debug(
       "[ACTION] File present:",
       !!file,
       "Has title:",
@@ -368,9 +513,9 @@ export const action = async ({ request }) => {
     );
 
     if (file && !hasTitle) {
-      debugLog("[ACTION] Detected file upload request - using official Shopify staged upload method");
+      logger.debug("[ACTION] Detected file upload request - using official Shopify staged upload method");
       try {
-        debugLog("[ACTION] Admin authenticated successfully for file upload");
+        logger.debug("[ACTION] Admin authenticated successfully for file upload");
 
         if (!file) {
           return json({ error: "No file provided", success: false });
@@ -398,7 +543,7 @@ export const action = async ({ request }) => {
         const fileType = file.type || "image/jpeg";
         const fileSize = file.size || 0;
 
-        debugLog("[ACTION] File:", fileName, "Type:", fileType, "Size:", fileSize, "bytes");
+        logger.debug("[ACTION] File:", fileName, "Type:", fileType, "Size:", fileSize, "bytes");
 
         let arrayBuffer;
         if (typeof file.arrayBuffer === "function") {
@@ -427,7 +572,7 @@ export const action = async ({ request }) => {
         }
         const fileBuffer = Buffer.from(arrayBuffer);
 
-        debugLog("[ACTION] Step 1: Creating staged upload target...");
+        logger.debug("[ACTION] Step 1: Creating staged upload target...");
         const stagedUploadResponse = await admin.graphql(
           `#graphql
           mutation stagedUploadsCreate($input: [StagedUploadInput!]!) {
@@ -462,11 +607,11 @@ export const action = async ({ request }) => {
         );
 
         const stagedUploadJson = await stagedUploadResponse.json();
-        debugLog("[ACTION] Staged upload response received");
+        logger.debug("[ACTION] Staged upload response received");
 
         if (stagedUploadJson?.errors) {
           const errors = stagedUploadJson.errors.map((e) => e.message).join(", ");
-          console.error("[ACTION] GraphQL errors creating staged upload:", errors);
+          logger.error("[ACTION] GraphQL errors creating staged upload:", errors);
           return json({ error: `Failed to create staged upload: ${errors}`, success: false });
         }
 
@@ -474,28 +619,28 @@ export const action = async ({ request }) => {
           const errors = stagedUploadJson.data.stagedUploadsCreate.userErrors
             .map((e) => e.message)
             .join(", ");
-          console.error("[ACTION] User errors creating staged upload:", errors);
+          logger.error("[ACTION] User errors creating staged upload:", errors);
           return json({ error: `Failed to create staged upload: ${errors}`, success: false });
         }
 
         const stagedTarget = stagedUploadJson?.data?.stagedUploadsCreate?.stagedTargets?.[0];
         if (!stagedTarget || !stagedTarget.url) {
-          console.error("[ACTION] Invalid staged upload response:", JSON.stringify(stagedUploadJson, null, 2));
+          logger.error("[ACTION] Invalid staged upload response:", JSON.stringify(stagedUploadJson, null, 2));
           return json({ error: "Failed to create staged upload target", success: false });
         }
 
-        debugLog("[ACTION] Staged upload created. Upload URL:", stagedTarget.url);
-        debugLog("[ACTION] Resource URL:", stagedTarget.resourceUrl);
-        debugLog("[ACTION] Parameters:", stagedTarget.parameters?.length || 0, "parameters");
+        logger.debug("[ACTION] Staged upload created. Upload URL:", stagedTarget.url);
+        logger.debug("[ACTION] Resource URL:", stagedTarget.resourceUrl);
+        logger.debug("[ACTION] Parameters:", stagedTarget.parameters?.length || 0, "parameters");
 
-        debugLog("[ACTION] Step 2: Uploading file to Google Cloud Storage...");
+        logger.debug("[ACTION] Step 2: Uploading file to Google Cloud Storage...");
         const FormData = (await import("form-data")).default;
         const uploadFormData = new FormData();
 
         if (Array.isArray(stagedTarget.parameters)) {
           for (const param of stagedTarget.parameters) {
             uploadFormData.append(param.name, param.value);
-            debugLog(
+            logger.debug(
               "[ACTION] Added parameter:",
               param.name,
               "=",
@@ -509,11 +654,11 @@ export const action = async ({ request }) => {
           contentType: fileType,
         });
 
-        debugLog("[ACTION] Uploading to:", stagedTarget.url);
-        debugLog("[ACTION] File buffer size:", fileBuffer.length, "bytes");
+        logger.debug("[ACTION] Uploading to:", stagedTarget.url);
+        logger.debug("[ACTION] File buffer size:", fileBuffer.length, "bytes");
 
         const uploadHeaders = uploadFormData.getHeaders();
-        debugLog("[ACTION] Upload headers:", Object.keys(uploadHeaders));
+        logger.debug("[ACTION] Upload headers:", Object.keys(uploadHeaders));
 
         const { request: undiciRequest } = await import("undici");
         const uploadResponse = await undiciRequest(stagedTarget.url, {
@@ -524,8 +669,8 @@ export const action = async ({ request }) => {
 
         if (uploadResponse.statusCode >= 400) {
           const responseBody = await uploadResponse.body.text();
-          console.error("[ACTION] GCS upload failed:", uploadResponse.statusCode);
-          console.error("[ACTION] Response body:", responseBody);
+          logger.error("[ACTION] GCS upload failed:", uploadResponse.statusCode);
+          logger.error("[ACTION] Response body:", responseBody);
           return json({
             error: `Cloud storage upload failed: ${uploadResponse.statusCode}`,
             details: responseBody.substring(0, 200),
@@ -534,11 +679,11 @@ export const action = async ({ request }) => {
         }
 
         const responseBody = await uploadResponse.body.text();
-        debugLog("[ACTION] GCS upload response:", uploadResponse.statusCode, responseBody.substring(0, 200));
+        logger.debug("[ACTION] GCS upload response:", uploadResponse.statusCode, responseBody.substring(0, 200));
 
-        debugLog("[ACTION] File uploaded successfully to GCS");
+        logger.debug("[ACTION] File uploaded successfully to GCS");
 
-        debugLog("[ACTION] Step 3: Creating file record in Shopify...");
+        logger.debug("[ACTION] Step 3: Creating file record in Shopify...");
         const fileCreateResponse = await admin.graphql(
           `#graphql
           mutation fileCreate($files: [FileCreateInput!]!) {
@@ -575,12 +720,12 @@ export const action = async ({ request }) => {
         );
 
         const fileCreateJson = await fileCreateResponse.json();
-        debugLog("[ACTION] File create response received");
-        debugLog("[ACTION] File create response:", JSON.stringify(fileCreateJson, null, 2));
+        logger.debug("[ACTION] File create response received");
+        logger.debug("[ACTION] File create response:", JSON.stringify(fileCreateJson, null, 2));
 
         if (fileCreateJson?.errors) {
           const errors = fileCreateJson.errors.map((e) => e.message).join(", ");
-          console.error("[ACTION] GraphQL errors creating file:", errors);
+          logger.error("[ACTION] GraphQL errors creating file:", errors);
           return json({ error: `Failed to register file: ${errors}`, success: false });
         }
 
@@ -588,26 +733,26 @@ export const action = async ({ request }) => {
           const errors = fileCreateJson.data.fileCreate.userErrors
             .map((e) => e.message)
             .join(", ");
-          console.error("[ACTION] User errors creating file:", errors);
+          logger.error("[ACTION] User errors creating file:", errors);
           return json({ error: `Failed to register file: ${errors}`, success: false });
         }
 
         const uploadedFile = fileCreateJson?.data?.fileCreate?.files?.[0];
         if (!uploadedFile?.id) {
-          console.error("[ACTION] No file ID returned in response");
+          logger.error("[ACTION] No file ID returned in response");
           return json({ error: "File registration failed", success: false });
         }
 
-        debugLog("[ACTION] File uploaded successfully, ID:", uploadedFile.id);
-        debugLog("[ACTION] File status:", uploadedFile.fileStatus);
-        debugLog("[ACTION] File alt:", uploadedFile.alt);
-        debugLog("[ACTION] File image URL:", uploadedFile.image?.url);
+        logger.debug("[ACTION] File uploaded successfully, ID:", uploadedFile.id);
+        logger.debug("[ACTION] File status:", uploadedFile.fileStatus);
+        logger.debug("[ACTION] File alt:", uploadedFile.alt);
+        logger.debug("[ACTION] File image URL:", uploadedFile.image?.url);
 
         let fileUrl = uploadedFile.image?.url;
         let fileAlt = uploadedFile.alt || file.name;
 
         if (!fileUrl && uploadedFile.fileStatus !== "READY") {
-          debugLog("[ACTION] File is still processing, waiting for URL...");
+          logger.debug("[ACTION] File is still processing, waiting for URL...");
           for (let i = 0; i < 5; i++) {
             await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -632,11 +777,11 @@ export const action = async ({ request }) => {
             if (fileNode?.image?.url) {
               fileUrl = fileNode.image.url;
               fileAlt = fileNode.alt || fileName;
-              debugLog("[ACTION] File URL now available:", fileUrl);
+              logger.debug("[ACTION] File URL now available:", fileUrl);
               break;
             }
 
-            debugLog("[ACTION] Still processing, attempt", i + 1, "of 5");
+            logger.debug("[ACTION] Still processing, attempt", i + 1, "of 5");
           }
         }
 
@@ -653,22 +798,22 @@ export const action = async ({ request }) => {
           { status: 200 },
         );
 
-        debugLog("[ACTION] Returning success response:", JSON.stringify({ success: true, file: { id: uploadedFile.id } }));
-        debugLog("[ACTION] Response Content-Type:", successResponse.headers.get("content-type"));
-        debugLog("[ACTION] Response status:", successResponse.status);
+        logger.debug("[ACTION] Returning success response:", JSON.stringify({ success: true, file: { id: uploadedFile.id } }));
+        logger.debug("[ACTION] Response Content-Type:", successResponse.headers.get("content-type"));
+        logger.debug("[ACTION] Response status:", successResponse.status);
 
         return successResponse;
       } catch (error) {
-        console.error("[ACTION] Error uploading file:", error);
-        console.error("[ACTION] Error message:", error.message);
-        console.error("[ACTION] Error stack:", error.stack);
+        logger.error("[ACTION] Error uploading file:", error);
+        logger.error("[ACTION] Error message:", error.message);
+        logger.error("[ACTION] Error stack:", error.stack);
         return json({ error: error.message || "File upload failed", success: false });
       }
     }
 
-    debugLog("[ACTION] Action called - starting entry creation");
-    debugLog("[ACTION] Admin authenticated successfully");
-    debugLog("[ACTION] Form data received");
+    logger.debug("[ACTION] Action called - starting entry creation");
+    logger.debug("[ACTION] Admin authenticated successfully");
+    logger.debug("[ACTION] Form data received");
 
     const positionId = String(formData.get("position_id") || "").trim();
     const title = String(formData.get("title") || "").trim();
@@ -681,9 +826,14 @@ export const action = async ({ request }) => {
     const status = formData.get("status") ? "ACTIVE" : "DRAFT";
     const desktopBanner = String(formData.get("desktop_banner") || "").trim();
     const mobileBanner = String(formData.get("mobile_banner") || "").trim();
-    const userTimeZone = String(formData.get("timezone") || "").trim() || null;
+    const blockType = String(formData.get("block_type") || "").trim() || DEFAULT_BLOCK_TYPE;
+    // Store timezone is source of truth; fallback to user timezone for backward compat
+    const storeTimeZone =
+      String(formData.get("store_timezone") || formData.get("storeTimezone") || "").trim() ||
+      String(formData.get("timezone") || "").trim() ||
+      null;
     const userTimezoneOffsetRaw = formData.get("timezone_offset");
-    const userTimezoneOffset =
+    const fallbackOffset =
       userTimezoneOffsetRaw !== null && userTimezoneOffsetRaw !== undefined && userTimezoneOffsetRaw !== "" && !Number.isNaN(Number(userTimezoneOffsetRaw))
         ? Number(userTimezoneOffsetRaw)
         : undefined;
@@ -694,8 +844,45 @@ export const action = async ({ request }) => {
     if (!positionId) {
       return json({ error: "Position ID is required", success: false }, { status: 400 });
     }
+    if (blockType === "announcement_bar") {
+      const annText = String(formData.get("announcement_text") || "").trim();
+      if (!annText) {
+        return json({ error: "Message is required for Announcement Bar", success: false }, { status: 400 });
+      }
+    }
+    if (blockType === "collection_banner") {
+      const collHandle = String(formData.get("collection_handle") || "").trim();
+      if (!collHandle) {
+        return json({ error: "Collection handle is required for Collection Banner", success: false }, { status: 400 });
+      }
+    }
+    if (blockType === "countdown_banner") {
+      const targetDate = String(formData.get("countdown_target_date") || "").trim();
+      if (!targetDate) {
+        return json({ error: "Target date is required for Countdown Banner", success: false }, { status: 400 });
+      }
+    }
+    if (blockType === "image_with_text") {
+      const imgId = String(formData.get("image_with_text_image") || "").trim();
+      if (!imgId) {
+        return json({ error: "Image is required for Image with Text", success: false }, { status: 400 });
+      }
+    }
+    if (blockType === "background_video") {
+      const vidUrl = String(formData.get("video_url") || "").trim();
+      const vidFile = String(formData.get("video_file") || "").trim();
+      if (!vidUrl && !vidFile) {
+        return json({ error: "Video URL or Video file is required for Background Video", success: false }, { status: 400 });
+      }
+    }
+    if (blockType === "promo_card") {
+      const promoImg = String(formData.get("promo_card_image") || "").trim();
+      if (!promoImg) {
+        return json({ error: "Image is required for Promo Card", success: false }, { status: 400 });
+      }
+    }
 
-    debugLog("Raw form data:", {
+    logger.debug("Raw form data:", {
       positionId,
       title,
       headline,
@@ -707,100 +894,146 @@ export const action = async ({ request }) => {
       status,
       desktopBanner,
       mobileBanner,
-      userTimeZone,
-      userTimezoneOffset,
+      storeTimeZone,
+      fallbackOffset,
     });
 
-    const defaults = getDefaultDateBounds(userTimeZone, userTimezoneOffset);
-    const formattedStartAt = startAt ? parseLocalDateTimeToUTC(startAt, userTimeZone, userTimezoneOffset) : defaults.start;
-    const formattedEndAt = endAt ? parseLocalDateTimeToUTC(endAt, userTimeZone, userTimezoneOffset) : defaults.end;
+    const defaults = getDefaultDateBounds(storeTimeZone, fallbackOffset);
+    const formattedStartAt = startAt ? parseLocalDateTimeToUTC(startAt, storeTimeZone, fallbackOffset) : defaults.start;
+    const formattedEndAt = endAt ? parseLocalDateTimeToUTC(endAt, storeTimeZone, fallbackOffset) : defaults.end;
 
     if (!formattedStartAt || !formattedEndAt) {
       return json({ error: "Invalid date/time values", success: false }, { status: 400 });
     }
 
-    debugLog("Creating metaobject with fields:", JSON.stringify({
+    logger.debug("Creating metaobject with fields:", JSON.stringify({
       positionId,
       formattedStartAt,
       formattedEndAt,
       status,
     }, null, 2));
 
-    try {
-      const definitionResponse = await admin.graphql(
-        `#graphql
-        query ($type: String!) {
-          metaobjectDefinitionByType(type: $type) {
-            id
-            type
-          }
-        }
-      `,
-        { variables: { type: "schedulable_entity" } },
-      );
-      const definitionJson = await definitionResponse.json();
-      const definitionExists = Boolean(definitionJson?.data?.metaobjectDefinitionByType?.id);
+    const defResult = await ensureMetaobjectDefinition(admin);
+    if (!defResult.ok) {
+      return json({ error: defResult.error || "Failed to ensure metaobject definition", success: false });
+    }
 
-      if (!definitionExists) {
-        const createDefResponse = await admin.graphql(
-          `#graphql
-          mutation metaobjectDefinitionCreate($definition: MetaobjectDefinitionInput!) {
-            metaobjectDefinitionCreate(definition: $definition) {
-              metaobjectDefinition { id type }
-              userErrors { field message }
-            }
-          }
-        `,
-          {
-            variables: {
-              definition: {
-                name: "Schedulable Entity",
-                type: "schedulable_entity",
-                access: {
-                  storefront: "PUBLIC",
-                },
-                fields: [
-                  { name: "Title", key: "title", type: "single_line_text_field" },
-                  { name: "Position ID", key: "position_id", type: "single_line_text_field" },
-                  { name: "Headline", key: "headline", type: "single_line_text_field" },
-                  { name: "Description", key: "description", type: "multi_line_text_field" },
-                  { name: "Start At", key: "start_at", type: "date_time" },
-                  { name: "End At", key: "end_at", type: "date_time" },
-                  { name: "Target URL", key: "target_url", type: "url" },
-                  { name: "Button Text", key: "button_text", type: "single_line_text_field" },
-                  {
-                    name: "Desktop Banner",
-                    key: "desktop_banner",
-                    type: "file_reference",
-                    validations: [{ name: "file_type", value: "image" }],
-                  },
-                  {
-                    name: "Mobile Banner",
-                    key: "mobile_banner",
-                    type: "file_reference",
-                    validations: [{ name: "file_type", value: "image" }],
-                  },
-                ],
-              },
-            },
-          },
-        );
-        const createDefJson = await createDefResponse.json();
-        if (createDefJson?.data?.metaobjectDefinitionCreate?.userErrors?.length) {
-          const errors = createDefJson.data.metaobjectDefinitionCreate.userErrors
-            .map((e) => e.message)
-            .join(", ");
-          return json({ error: `Failed to ensure metaobject definition: ${errors}`, success: false });
-        }
+    let typeConfig = "{}";
+    if (blockType === "hero") {
+      typeConfig = JSON.stringify({
+        headline,
+        description,
+        desktop_banner: desktopBanner || null,
+        mobile_banner: mobileBanner || null,
+        target_url: targetUrl || null,
+        button_text: buttonText || null,
+      });
+    } else if (blockType === "announcement_bar") {
+      const annText = String(formData.get("announcement_text") || "").trim();
+      const annLink = String(formData.get("announcement_link") || "").trim();
+      const annBg = String(formData.get("announcement_bg_color") || "#000000").trim();
+      const annColor = String(formData.get("announcement_text_color") || "#ffffff").trim();
+      typeConfig = JSON.stringify({
+        text: annText,
+        link: annLink || null,
+        bg_color: annBg,
+        text_color: annColor,
+      });
+    } else if (blockType === "collection_banner") {
+      const collHandle = String(formData.get("collection_handle") || "").trim();
+      const collImage = String(formData.get("collection_banner_image") || "").trim();
+      const collHeadline = String(formData.get("collection_headline") || "").trim();
+      const collDesc = String(formData.get("collection_description") || "").trim();
+      const collBtn = String(formData.get("collection_button_text") || "").trim();
+      typeConfig = JSON.stringify({
+        collection_handle: collHandle,
+        image: collImage || null,
+        headline: collHeadline || null,
+        description: collDesc || null,
+        button_text: collBtn || null,
+      });
+      if (collImage) {
+        fields.push({ key: "desktop_banner", value: collImage });
       }
-    } catch (error) {
-      console.error("[ACTION] Error ensuring metaobject definition:", error);
-      return json({ error: error.message || "Failed to ensure metaobject definition", success: false });
+    } else if (blockType === "countdown_banner") {
+      const targetDateRaw = String(formData.get("countdown_target_date") || "").trim();
+      const targetDateUtc = targetDateRaw
+        ? parseLocalDateTimeToUTC(targetDateRaw, storeTimeZone, fallbackOffset)
+        : null;
+      const cdHeadline = String(formData.get("countdown_headline") || "").trim();
+      const cdSubtext = String(formData.get("countdown_subtext") || "").trim();
+      const cdBgImg = String(formData.get("countdown_bg_image") || "").trim();
+      const cdBgColor = String(formData.get("countdown_bg_color") || "#000000").trim();
+      const cdTextColor = String(formData.get("countdown_text_color") || "#ffffff").trim();
+      const cdLink = String(formData.get("countdown_target_url") || "").trim();
+      const cdBtn = String(formData.get("countdown_button_text") || "").trim();
+      typeConfig = JSON.stringify({
+        target_date: targetDateUtc,
+        headline: cdHeadline || null,
+        subtext: cdSubtext || null,
+        background_image: cdBgImg || null,
+        background_color: cdBgColor,
+        text_color: cdTextColor,
+        target_url: cdLink || null,
+        button_text: cdBtn || null,
+      });
+      const cdBgImg = String(formData.get("countdown_bg_image") || "").trim();
+      if (cdBgImg) fields.push({ key: "desktop_banner", value: cdBgImg });
+    } else if (blockType === "image_with_text") {
+      const iwtImage = String(formData.get("image_with_text_image") || "").trim();
+      const iwtHeadline = String(formData.get("image_with_text_headline") || "").trim();
+      const iwtDesc = String(formData.get("image_with_text_description") || "").trim();
+      const iwtBtn = String(formData.get("image_with_text_button_text") || "").trim();
+      const iwtLink = String(formData.get("image_with_text_button_link") || "").trim();
+      const iwtLayout = String(formData.get("image_with_text_layout") || "image_left").trim();
+      typeConfig = JSON.stringify({
+        image: iwtImage,
+        headline: iwtHeadline || null,
+        description: iwtDesc || null,
+        button_text: iwtBtn || null,
+        button_link: iwtLink || null,
+        layout: iwtLayout,
+      });
+      if (iwtImage) fields.push({ key: "desktop_banner", value: iwtImage });
+    } else if (blockType === "background_video") {
+      const vidUrl = String(formData.get("video_url") || "").trim();
+      const vidFile = String(formData.get("video_file") || "").trim();
+      const vidHeadline = String(formData.get("video_headline") || "").trim();
+      const vidDesc = String(formData.get("video_description") || "").trim();
+      const vidBtn = String(formData.get("video_button_text") || "").trim();
+      const vidLink = String(formData.get("video_button_link") || "").trim();
+      const vidOverlay = Number(formData.get("video_overlay_opacity") || 50) || 50;
+      typeConfig = JSON.stringify({
+        video_url: vidUrl || null,
+        video_file: vidFile || null,
+        headline: vidHeadline || null,
+        description: vidDesc || null,
+        button_text: vidBtn || null,
+        button_link: vidLink || null,
+        overlay_opacity: Math.min(100, Math.max(0, vidOverlay)),
+      });
+      if (vidFile) fields.push({ key: "desktop_banner", value: vidFile });
+    } else if (blockType === "promo_card") {
+      const promoImg = String(formData.get("promo_card_image") || "").trim();
+      const promoTitle = String(formData.get("promo_card_title") || "").trim();
+      const promoDesc = String(formData.get("promo_card_description") || "").trim();
+      const promoUrl = String(formData.get("promo_card_cta_url") || "").trim();
+      const promoBtn = String(formData.get("promo_card_cta_text") || "").trim();
+      typeConfig = JSON.stringify({
+        image: promoImg,
+        title: promoTitle || null,
+        description: promoDesc || null,
+        cta_url: promoUrl || null,
+        cta_text: promoBtn || null,
+      });
+      if (promoImg) fields.push({ key: "desktop_banner", value: promoImg });
     }
 
     const fields = [
       { key: "title", value: title },
       { key: "position_id", value: positionId },
+      { key: "block_type", value: blockType },
+      { key: "type_config", value: typeConfig },
       { key: "headline", value: headline },
       { key: "description", value: description },
       { key: "start_at", value: formattedStartAt },
@@ -855,7 +1088,7 @@ export const action = async ({ request }) => {
 
     if (createJson?.errors) {
       const errors = createJson.errors.map((e) => e.message).join(", ");
-      console.error("[ACTION] GraphQL errors creating entry:", errors);
+      logger.error("[ACTION] GraphQL errors creating entry:", errors);
       return json({ error: `Failed to create entry: ${errors}`, success: false });
     }
 
@@ -863,7 +1096,7 @@ export const action = async ({ request }) => {
       const errors = createJson.data.metaobjectCreate.userErrors
         .map((e) => e.message)
         .join(", ");
-      console.error("[ACTION] User errors creating entry:", errors);
+      logger.error("[ACTION] User errors creating entry:", errors);
       return json({ error: `Failed to create entry: ${errors}`, success: false });
     }
 
@@ -875,14 +1108,14 @@ export const action = async ({ request }) => {
       });
     }
 
-    debugLog("[ACTION] Entry created successfully, returning success");
+    logger.debug("[ACTION] Entry created successfully, returning success");
     return json({ success: true, message: "Entry created successfully!" });
   } catch (error) {
-    console.error("[ACTION] ========== ERROR IN ACTION ==========");
-    console.error("[ACTION] Error message:", error.message);
-    console.error("[ACTION] Error name:", error.name);
-    console.error("[ACTION] Error stack:", error.stack);
-    console.error("[ACTION] Full error:", error);
+    logger.error("[ACTION] ========== ERROR IN ACTION ==========");
+    logger.error("[ACTION] Error message:", error.message);
+    logger.error("[ACTION] Error name:", error.name);
+    logger.error("[ACTION] Error stack:", error.stack);
+    logger.error("[ACTION] Full error:", error);
 
     return json({
       error: `Failed to process request: ${error.message || "Unknown error"}`,

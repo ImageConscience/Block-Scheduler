@@ -4,6 +4,7 @@ import { useAppBridge } from "@shopify/app-bridge-react";
 import { Redirect } from "@shopify/app-bridge/actions";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import PropTypes from "prop-types";
+import { formatUTCForDateTimeInput, formatUTCForDisplay } from "../components/BlockScheduler/utils";
 export { loader, action } from "../services/block-scheduler.server";
 
 const isDevEnvironment =
@@ -18,9 +19,11 @@ export default function BlockSchedulerPage() {
   const loaderData = useLoaderData();
   const initialEntries = loaderData?.entries ?? [];
   const loaderMediaFiles = loaderData?.mediaFiles ?? [];
+  const loaderVideoFiles = loaderData?.videoFiles ?? [];
   const mediaFiles = loaderMediaFiles;
   const loaderError = loaderData?.error ?? null;
   const redirectUrl = loaderData?.redirectUrl ?? null;
+  const storeTimeZone = loaderData?.storeTimeZone ?? "UTC";
   const fetcher = useFetcher();
   const shopify = useAppBridge();
   const navigation = useNavigation();
@@ -35,7 +38,10 @@ export default function BlockSchedulerPage() {
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [userTimeZone, setUserTimeZone] = useState("UTC");
   const [userTimezoneOffset, setUserTimezoneOffset] = useState(0);
+  const [formBlockType, setFormBlockType] = useState("hero");
   const statusInputId = useId();
+  const blockTypes = loaderData?.blockTypes ?? {};
+  const defaultBlockType = loaderData?.defaultBlockType ?? "hero";
 
   const performRedirect = useCallback(
     (url, source) => {
@@ -145,6 +151,7 @@ export default function BlockSchedulerPage() {
   const handleCloseForm = () => {
     setShowForm(false);
     setFormStatusActive(false);
+    setFormBlockType(defaultBlockType);
     if (formRef.current) {
       formRef.current.reset();
     }
@@ -239,19 +246,30 @@ export default function BlockSchedulerPage() {
             <div style={{ padding: "1.5rem" }}>
               <fetcher.Form method="post" ref={formRef} encType="application/x-www-form-urlencoded">
           <s-stack direction="block" gap="base">
-            {/* Hidden field to capture user's timezone offset */}
-            <input
-              type="hidden"
-              name="timezone_offset"
-              value={userTimezoneOffset}
-              readOnly
-            />
-            <input
-              type="hidden"
-              name="timezone"
-              value={userTimeZone}
-              readOnly
-            />
+            <input type="hidden" name="store_timezone" value={storeTimeZone} readOnly />
+            <input type="hidden" name="timezone_offset" value={userTimezoneOffset} readOnly />
+            <input type="hidden" name="timezone" value={userTimeZone} readOnly />
+            <input type="hidden" name="block_type" value={formBlockType} readOnly />
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Block Type</label>
+              <select
+                value={formBlockType}
+                onChange={(e) => setFormBlockType(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "0.5rem",
+                  border: "1px solid #c9cccf",
+                  borderRadius: "4px",
+                  fontSize: "0.875rem",
+                }}
+              >
+                {Object.values(blockTypes).map((bt) => (
+                  <option key={bt.key} value={bt.key}>
+                    {bt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
             <s-text-field
               label="Title"
               name="title"
@@ -264,6 +282,205 @@ export default function BlockSchedulerPage() {
               required
               placeholder="e.g., homepage_banner"
             />
+                  <p style={{ margin: "0 0 0.5rem 0", fontSize: "0.8125rem", color: "#6d7175" }}>
+                    Times are in store timezone ({storeTimeZone}).{userTimeZone !== storeTimeZone && (
+                      <> In your timezone ({userTimeZone}): times will differ.</>
+                    )}
+                  </p>
+                  {formBlockType === "hero" && (
+                    <>
+                  <div style={{ display: "flex", gap: "15px", marginBottom: "0.5rem" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <MediaLibraryPicker
+                        name="desktop_banner"
+                        label="Desktop Banner"
+                        mediaFiles={loaderMediaFiles || []}
+                      />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <MediaLibraryPicker
+                        name="mobile_banner"
+                        label="Mobile Banner"
+                        mediaFiles={loaderMediaFiles || []}
+                      />
+                    </div>
+                  </div>
+                  <s-text-field
+                    label="Headline"
+                    name="headline"
+                    placeholder="Headline text"
+                  />
+                  <s-text-field
+                    label="Description"
+                    name="description"
+                    multiline={3}
+                    placeholder="Short description or summary"
+                  />
+                  <s-url-field
+                    label="Target URL"
+                    name="target_url"
+                    placeholder="https://example.com"
+                  />
+                  <s-text-field
+                    label="Button Text"
+                    name="button_text"
+                    placeholder="Button text"
+                  />
+                    </>
+                  )}
+                  {formBlockType === "announcement_bar" && (
+                    <>
+                  <s-text-field
+                    label="Message"
+                    name="announcement_text"
+                    required
+                    placeholder="e.g. Free shipping on orders over $50"
+                  />
+                  <s-url-field
+                    label="Link URL"
+                    name="announcement_link"
+                    placeholder="https://example.com"
+                  />
+                  <div style={{ display: "flex", gap: "15px", marginBottom: "0.5rem" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Background Color</label>
+                      <input
+                        type="color"
+                        name="announcement_bg_color"
+                        defaultValue="#000000"
+                        style={{ width: "100%", height: "36px", border: "1px solid #c9cccf", borderRadius: "4px" }}
+                      />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Text Color</label>
+                      <input
+                        type="color"
+                        name="announcement_text_color"
+                        defaultValue="#ffffff"
+                        style={{ width: "100%", height: "36px", border: "1px solid #c9cccf", borderRadius: "4px" }}
+                      />
+                    </div>
+                  </div>
+                    </>
+                  )}
+                  {formBlockType === "collection_banner" && (
+                    <>
+                  <s-text-field
+                    label="Collection Handle"
+                    name="collection_handle"
+                    required
+                    placeholder="e.g. summer-collection"
+                  />
+                  <MediaLibraryPicker
+                    name="collection_banner_image"
+                    label="Banner Image (optional override)"
+                    mediaFiles={loaderMediaFiles || []}
+                  />
+                  <s-text-field
+                    label="Headline Override"
+                    name="collection_headline"
+                    placeholder="Leave blank to use collection title"
+                  />
+                  <s-text-field
+                    label="Description"
+                    name="collection_description"
+                    multiline={2}
+                    placeholder="Short description"
+                  />
+                  <s-text-field
+                    label="Button Text"
+                    name="collection_button_text"
+                    placeholder="Shop Now"
+                  />
+                    </>
+                  )}
+                  {formBlockType === "countdown_banner" && (
+                    <>
+                  <div style={{ marginBottom: "0.5rem" }}>
+                    <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Target Date & Time</label>
+                    <input
+                      type="datetime-local"
+                      name="countdown_target_date"
+                      required
+                      style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }}
+                    />
+                  </div>
+                  <s-text-field label="Headline" name="countdown_headline" placeholder="Sale ends in" />
+                  <s-text-field label="Subtext" name="countdown_subtext" placeholder="Don't miss out!" />
+                  <MediaLibraryPicker
+                    name="countdown_bg_image"
+                    label="Background Image"
+                    mediaFiles={loaderMediaFiles || []}
+                  />
+                  <div style={{ display: "flex", gap: "15px", marginBottom: "0.5rem" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Background Color</label>
+                      <input type="color" name="countdown_bg_color" defaultValue="#000000" style={{ width: "100%", height: "36px", border: "1px solid #c9cccf", borderRadius: "4px" }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Text Color</label>
+                      <input type="color" name="countdown_text_color" defaultValue="#ffffff" style={{ width: "100%", height: "36px", border: "1px solid #c9cccf", borderRadius: "4px" }} />
+                    </div>
+                  </div>
+                  <s-url-field label="Link URL" name="countdown_target_url" placeholder="https://..." />
+                  <s-text-field label="Button Text" name="countdown_button_text" placeholder="Shop Now" />
+                    </>
+                  )}
+                  {formBlockType === "image_with_text" && (
+                    <>
+                  <MediaLibraryPicker
+                    name="image_with_text_image"
+                    label="Image"
+                    mediaFiles={loaderMediaFiles || []}
+                  />
+                  <s-text-field label="Headline" name="image_with_text_headline" placeholder="Headline" />
+                  <s-text-field label="Description" name="image_with_text_description" multiline={3} placeholder="Description" />
+                  <s-text-field label="Button Text" name="image_with_text_button_text" placeholder="Learn More" />
+                  <s-url-field label="Button Link" name="image_with_text_button_link" placeholder="https://..." />
+                  <div style={{ marginBottom: "0.5rem" }}>
+                    <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Layout</label>
+                    <select name="image_with_text_layout" style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px" }}>
+                      <option value="image_left">Image Left</option>
+                      <option value="image_right">Image Right</option>
+                    </select>
+                  </div>
+                    </>
+                  )}
+                  {formBlockType === "background_video" && (
+                    <>
+                  <s-url-field
+                    label="Video URL (hosted MP4/WebM)"
+                    name="video_url"
+                    placeholder="https://cdn.example.com/video.mp4"
+                  />
+                  <MediaLibraryPicker
+                    name="video_file"
+                    label="Or select video from Shopify"
+                    mediaFiles={loaderVideoFiles || []}
+                  />
+                  <s-text-field label="Headline" name="video_headline" placeholder="Headline" />
+                  <s-text-field label="Description" name="video_description" multiline={2} placeholder="Description" />
+                  <s-text-field label="Button Text" name="video_button_text" placeholder="Shop Now" />
+                  <s-url-field label="Button Link" name="video_button_link" placeholder="https://..." />
+                  <div style={{ marginBottom: "0.5rem" }}>
+                    <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Overlay Opacity (0-100)</label>
+                    <input type="number" name="video_overlay_opacity" defaultValue={50} min={0} max={100} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px" }} />
+                  </div>
+                    </>
+                  )}
+                  {formBlockType === "promo_card" && (
+                    <>
+                  <MediaLibraryPicker
+                    name="promo_card_image"
+                    label="Image"
+                    mediaFiles={loaderMediaFiles || []}
+                  />
+                  <s-text-field label="Title" name="promo_card_title" placeholder="Promo title" />
+                  <s-text-field label="Description" name="promo_card_description" multiline={2} placeholder="Short description" />
+                  <s-url-field label="CTA Link" name="promo_card_cta_url" placeholder="https://..." />
+                  <s-text-field label="CTA Text" name="promo_card_cta_text" placeholder="Shop Now" />
+                    </>
+                  )}
                   <div style={{ display: "flex", gap: "15px", marginBottom: "0.5rem" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <label htmlFor="start_at" style={{ display: "block", marginBottom: "0", fontWeight: "500", fontSize: "0.8125rem" }}>
@@ -302,43 +519,6 @@ export default function BlockSchedulerPage() {
                       />
                     </div>
                   </div>
-                  <s-url-field
-                    label="Target URL"
-                    name="target_url"
-                    placeholder="https://example.com"
-                  />
-                  <div style={{ display: "flex", gap: "15px", marginBottom: "0.5rem" }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <MediaLibraryPicker
-                        name="desktop_banner"
-                        label="Desktop Banner"
-                        mediaFiles={loaderMediaFiles || []}
-                      />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <MediaLibraryPicker
-                        name="mobile_banner"
-                        label="Mobile Banner"
-                        mediaFiles={loaderMediaFiles || []}
-                      />
-                    </div>
-                  </div>
-                  <s-text-field
-                    label="Headline"
-                    name="headline"
-                    placeholder="Headline text"
-                  />
-                  <s-text-field
-                    label="Description"
-                    name="description"
-                    multiline={3}
-                    placeholder="Short description or summary"
-                  />
-                  <s-text-field
-                    label="Button Text"
-                    name="button_text"
-                    placeholder="Button text"
-                  />
                   <div style={{ marginBottom: "0.5rem" }}>
                     <p style={{ marginBottom: "0.5rem", fontWeight: "500", fontSize: "0.875rem" }}>
                       Entry Status
@@ -536,6 +716,9 @@ export default function BlockSchedulerPage() {
                         )}
                       </th>
                       <th style={{ padding: "0.75rem", textAlign: "left", fontWeight: "600", borderRight: "1px solid #e1e3e5" }}>
+                        Block Type
+                      </th>
+                      <th style={{ padding: "0.75rem", textAlign: "left", fontWeight: "600", borderRight: "1px solid #e1e3e5" }}>
                         Desktop Banner
                       </th>
                       <th style={{ padding: "0.75rem", textAlign: "left", fontWeight: "600", borderRight: "1px solid #e1e3e5" }}>
@@ -641,11 +824,13 @@ export default function BlockSchedulerPage() {
                   
                   let startDate = "Not set";
                   let endDate = "Not set";
+                  let startDateUserTz = "";
+                  let endDateUserTz = "";
                   try {
                     if (fieldMap.start_at) {
-                      const start = new Date(fieldMap.start_at);
-                      if (!isNaN(start.getTime())) {
-                        startDate = start.toLocaleString();
+                      startDate = formatUTCForDisplay(fieldMap.start_at, storeTimeZone);
+                      if (userTimeZone !== storeTimeZone) {
+                        startDateUserTz = formatUTCForDisplay(fieldMap.start_at, userTimeZone);
                       }
                     }
                   } catch (e) {
@@ -653,9 +838,9 @@ export default function BlockSchedulerPage() {
                   }
                   try {
                     if (fieldMap.end_at) {
-                      const end = new Date(fieldMap.end_at);
-                      if (!isNaN(end.getTime())) {
-                        endDate = end.toLocaleString();
+                      endDate = formatUTCForDisplay(fieldMap.end_at, storeTimeZone);
+                      if (userTimeZone !== storeTimeZone) {
+                        endDateUserTz = formatUTCForDisplay(fieldMap.end_at, userTimeZone);
                       }
                     }
                   } catch (e) {
@@ -777,6 +962,9 @@ export default function BlockSchedulerPage() {
                       <td style={{ padding: "0.75rem", borderRight: "1px solid #e1e3e5" }}>
                         {fieldMap.position_id || "-"}
                       </td>
+                      <td style={{ padding: "0.75rem", borderRight: "1px solid #e1e3e5", fontSize: "0.8125rem" }}>
+                        {blockTypes[fieldMap.block_type || "hero"]?.label || fieldMap.block_type || "Hero"}
+                      </td>
                       <td style={{ padding: "0.75rem", borderRight: "1px solid #e1e3e5", fontSize: "0.8125rem", textAlign: "center" }}>
                         {desktopBannerUrl ? (
                           <img 
@@ -800,10 +988,20 @@ export default function BlockSchedulerPage() {
                         )}
                       </td>
                       <td style={{ padding: "0.75rem", borderRight: "1px solid #e1e3e5", fontSize: "0.8125rem", color: "#666" }}>
-                        {startDate}
+                        <div>{startDate}</div>
+                        {startDateUserTz && (
+                          <div style={{ fontSize: "0.75rem", color: "#6d7175", marginTop: "2px" }}>
+                            In your timezone: {startDateUserTz}
+                          </div>
+                        )}
                       </td>
                       <td style={{ padding: "0.75rem", borderRight: "1px solid #e1e3e5", fontSize: "0.8125rem", color: "#666" }}>
-                        {endDate}
+                        <div>{endDate}</div>
+                        {endDateUserTz && (
+                          <div style={{ fontSize: "0.75rem", color: "#6d7175", marginTop: "2px" }}>
+                            In your timezone: {endDateUserTz}
+                          </div>
+                        )}
                       </td>
                       <td style={{ padding: "0.75rem", borderRight: "1px solid #e1e3e5", textAlign: "center" }}>
                         <button
@@ -860,6 +1058,9 @@ export default function BlockSchedulerPage() {
         <EditEntryModal
           entry={selectedEntry}
           mediaFiles={mediaFiles}
+          videoFiles={loaderVideoFiles || []}
+          blockTypes={blockTypes}
+          storeTimeZone={storeTimeZone}
           userTimeZone={userTimeZone}
           userTimezoneOffset={userTimezoneOffset}
           onClose={() => {
@@ -894,7 +1095,7 @@ export default function BlockSchedulerPage() {
 }
 
 // Edit Entry Modal Component
-function EditEntryModal({ entry, mediaFiles, onClose, onSuccess, userTimeZone, userTimezoneOffset }) {
+function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = {}, onClose, onSuccess, storeTimeZone = "UTC", userTimeZone, userTimezoneOffset }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const baseId = useId();
@@ -902,29 +1103,109 @@ function EditEntryModal({ entry, mediaFiles, onClose, onSuccess, userTimeZone, u
   const positionInputId = `${baseId}-position`;
   const startInputId = `${baseId}-start`;
   const endInputId = `${baseId}-end`;
-  const headlineInputId = `${baseId}-headline`;
-  const descriptionInputId = `${baseId}-description`;
-  const targetUrlInputId = `${baseId}-target-url`;
-  const buttonTextInputId = `${baseId}-button-text`;
   
   const fieldMap = Object.fromEntries(
     (entry.fields || []).map((f) => [f.key, f.value]),
   );
-  
-  // Parse dates for datetime-local inputs
-  const getDateTimeLocal = (isoDate) => {
-    if (!isoDate) return "";
-    try {
-      const date = new Date(isoDate);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
-      const hours = String(date.getHours()).padStart(2, "0");
-      const minutes = String(date.getMinutes()).padStart(2, "0");
-      return `${year}-${month}-${day}T${hours}:${minutes}`;
-    } catch (e) {
-      return "";
+  const blockType = fieldMap.block_type || "hero";
+  let typeConfig = {};
+  try {
+    if (fieldMap.type_config) {
+      typeConfig = JSON.parse(fieldMap.type_config) || {};
     }
+  } catch (_) {}
+  
+  const getDateTimeLocal = (isoDate) => formatUTCForDateTimeInput(isoDate, storeTimeZone);
+  
+  const buildUpdateData = (formData) => {
+    const base = {
+      id: entry.id,
+      title: formData.get("title"),
+      positionId: formData.get("position_id"),
+      startAt: formData.get("start_at") || null,
+      endAt: formData.get("end_at") || null,
+      blockType,
+      store_timezone: storeTimeZone,
+      timezone: formData.get("timezone") || "",
+      timezoneOffset: formData.get("timezone_offset") || "",
+    };
+    if (blockType === "hero") {
+      return {
+        ...base,
+        headline: formData.get("headline") || "",
+        description: formData.get("description") || "",
+        desktopBanner: formData.get("desktop_banner") || "",
+        mobileBanner: formData.get("mobile_banner") || "",
+        targetUrl: formData.get("target_url") || "",
+        buttonText: formData.get("button_text") || "",
+      };
+    }
+    if (blockType === "announcement_bar") {
+      return {
+        ...base,
+        announcementText: formData.get("announcement_text") || "",
+        announcementLink: formData.get("announcement_link") || "",
+        announcementBgColor: formData.get("announcement_bg_color") || "#000000",
+        announcementTextColor: formData.get("announcement_text_color") || "#ffffff",
+      };
+    }
+    if (blockType === "collection_banner") {
+      return {
+        ...base,
+        collectionHandle: formData.get("collection_handle") || "",
+        collectionBannerImage: formData.get("collection_banner_image") || "",
+        collectionHeadline: formData.get("collection_headline") || "",
+        collectionDescription: formData.get("collection_description") || "",
+        collectionButtonText: formData.get("collection_button_text") || "",
+      };
+    }
+    if (blockType === "countdown_banner") {
+      return {
+        ...base,
+        countdownTargetDate: formData.get("countdown_target_date") || null,
+        countdownHeadline: formData.get("countdown_headline") || "",
+        countdownSubtext: formData.get("countdown_subtext") || "",
+        countdownBgImage: formData.get("countdown_bg_image") || "",
+        countdownBgColor: formData.get("countdown_bg_color") || "#000000",
+        countdownTextColor: formData.get("countdown_text_color") || "#ffffff",
+        countdownTargetUrl: formData.get("countdown_target_url") || "",
+        countdownButtonText: formData.get("countdown_button_text") || "",
+      };
+    }
+    if (blockType === "image_with_text") {
+      return {
+        ...base,
+        imageWithTextImage: formData.get("image_with_text_image") || "",
+        imageWithTextHeadline: formData.get("image_with_text_headline") || "",
+        imageWithTextDescription: formData.get("image_with_text_description") || "",
+        imageWithTextButtonText: formData.get("image_with_text_button_text") || "",
+        imageWithTextButtonLink: formData.get("image_with_text_button_link") || "",
+        imageWithTextLayout: formData.get("image_with_text_layout") || "image_left",
+      };
+    }
+    if (blockType === "background_video") {
+      return {
+        ...base,
+        videoUrl: formData.get("video_url") || "",
+        videoFile: formData.get("video_file") || "",
+        videoHeadline: formData.get("video_headline") || "",
+        videoDescription: formData.get("video_description") || "",
+        videoButtonText: formData.get("video_button_text") || "",
+        videoButtonLink: formData.get("video_button_link") || "",
+        videoOverlayOpacity: formData.get("video_overlay_opacity") || 50,
+      };
+    }
+    if (blockType === "promo_card") {
+      return {
+        ...base,
+        promoCardImage: formData.get("promo_card_image") || "",
+        promoCardTitle: formData.get("promo_card_title") || "",
+        promoCardDescription: formData.get("promo_card_description") || "",
+        promoCardCtaUrl: formData.get("promo_card_cta_url") || "",
+        promoCardCtaText: formData.get("promo_card_cta_text") || "",
+      };
+    }
+    return base;
   };
   
   const handleSubmit = async (e) => {
@@ -933,21 +1214,7 @@ function EditEntryModal({ entry, mediaFiles, onClose, onSuccess, userTimeZone, u
     setError("");
     
     const formData = new FormData(e.target);
-    const updateData = {
-      id: entry.id,
-      title: formData.get("title"),
-      positionId: formData.get("position_id"),
-      headline: formData.get("headline") || "",
-      description: formData.get("description") || "",
-      startAt: formData.get("start_at") || null,
-      endAt: formData.get("end_at") || null,
-      desktopBanner: formData.get("desktop_banner") || "",
-      mobileBanner: formData.get("mobile_banner") || "",
-      targetUrl: formData.get("target_url") || "",
-      buttonText: formData.get("button_text") || "",
-      timezone: formData.get("timezone") || "",
-      timezoneOffset: formData.get("timezone_offset") || "",
-    };
+    const updateData = buildUpdateData(formData);
     
     try {
       const response = await fetch(window.location.pathname, {
@@ -1032,8 +1299,14 @@ function EditEntryModal({ entry, mediaFiles, onClose, onSuccess, userTimeZone, u
               {error}
             </div>
           )}
+          <input type="hidden" name="store_timezone" value={storeTimeZone} readOnly />
           <input type="hidden" name="timezone" value={userTimeZone ?? "UTC"} readOnly />
           <input type="hidden" name="timezone_offset" value={userTimezoneOffset ?? 0} readOnly />
+          <p style={{ margin: "0 0 1rem 0", fontSize: "0.8125rem", color: "#6d7175" }}>
+            Times are in store timezone ({storeTimeZone}).{userTimeZone !== storeTimeZone && (
+              <> In your timezone ({userTimeZone}): times will differ.</>
+            )}
+          </p>
           <div style={{ marginBottom: "1rem" }}>
             <label htmlFor={titleInputId} style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>
               Title <span style={{ color: "#d72c0d" }}>*</span>
@@ -1072,135 +1345,203 @@ function EditEntryModal({ entry, mediaFiles, onClose, onSuccess, userTimeZone, u
               }}
             />
           </div>
-          <div style={{ display: "flex", gap: "15px", marginBottom: "1rem" }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <label htmlFor={startInputId} style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>
-                Start Date & Time
-              </label>
-              <input
-                type="datetime-local"
-                id={startInputId}
-                name="start_at"
-                defaultValue={getDateTimeLocal(fieldMap.start_at)}
-                style={{
-                  width: "100%",
-                  padding: "0.5rem",
-                  border: "1px solid #c9cccf",
-                  borderRadius: "4px",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <label htmlFor={endInputId} style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>
-                End Date & Time
-              </label>
-              <input
-                type="datetime-local"
-                id={endInputId}
-                name="end_at"
-                defaultValue={getDateTimeLocal(fieldMap.end_at)}
-                style={{
-                  width: "100%",
-                  padding: "0.5rem",
-                  border: "1px solid #c9cccf",
-                  borderRadius: "4px",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
+          <div style={{ marginBottom: "1rem", padding: "0.5rem", backgroundColor: "#f6f6f7", borderRadius: "4px", fontSize: "0.875rem" }}>
+            Block type: <strong>{blockTypes[blockType]?.label || blockType}</strong>
           </div>
           <div style={{ display: "flex", gap: "15px", marginBottom: "1rem" }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <MediaLibraryPicker
-                name="desktop_banner"
-                label="Desktop Banner"
-                mediaFiles={mediaFiles}
-                defaultValue={fieldMap.desktop_banner || ""}
-              />
+              <label htmlFor={startInputId} style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Start Date & Time</label>
+              <input type="datetime-local" id={startInputId} name="start_at" defaultValue={getDateTimeLocal(fieldMap.start_at)} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <MediaLibraryPicker
-                name="mobile_banner"
-                label="Mobile Banner"
-                mediaFiles={mediaFiles}
-                defaultValue={fieldMap.mobile_banner || ""}
-              />
+              <label htmlFor={endInputId} style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>End Date & Time</label>
+              <input type="datetime-local" id={endInputId} name="end_at" defaultValue={getDateTimeLocal(fieldMap.end_at)} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
             </div>
           </div>
-          <div style={{ marginBottom: "1rem" }}>
-            <label htmlFor={headlineInputId} style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>
-              Headline
-            </label>
-            <input
-              type="text"
-              id={headlineInputId}
-              name="headline"
-              defaultValue={fieldMap.headline || ""}
-              placeholder="Headline text"
-              style={{
-                width: "100%",
-                padding: "0.5rem",
-                border: "1px solid #c9cccf",
-                borderRadius: "4px",
-                boxSizing: "border-box",
-              }}
-            />
-          </div>
-          <div style={{ marginBottom: "1rem" }}>
-            <label htmlFor={descriptionInputId} style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>
-              Description
-            </label>
-            <input
-              type="text"
-              id={descriptionInputId}
-              name="description"
-              defaultValue={fieldMap.description || ""}
-              style={{
-                width: "100%",
-                padding: "0.5rem",
-                border: "1px solid #c9cccf",
-                borderRadius: "4px",
-                boxSizing: "border-box",
-              }}
-            />
-          </div>
-          <div style={{ marginBottom: "1rem" }}>
-            <label htmlFor={targetUrlInputId} style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>
-              Target URL
-            </label>
-            <input
-              type="text"
-              id={targetUrlInputId}
-              name="target_url"
-              defaultValue={fieldMap.target_url || ""}
-              style={{
-                width: "100%",
-                padding: "0.5rem",
-                border: "1px solid #c9cccf",
-                borderRadius: "4px",
-                boxSizing: "border-box",
-              }}
-            />
-          </div>
-          <div style={{ marginBottom: "1rem" }}>
-            <label htmlFor={buttonTextInputId} style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>
-              Button Text
-            </label>
-            <input
-              type="text"
-              id={buttonTextInputId}
-              name="button_text"
-              defaultValue={fieldMap.button_text || ""}
-              style={{
-                width: "100%",
-                padding: "0.5rem",
-                border: "1px solid #c9cccf",
-                borderRadius: "4px",
-                boxSizing: "border-box",
-              }}
-            />
-          </div>
+          {blockType === "hero" && (
+            <>
+              <div style={{ display: "flex", gap: "15px", marginBottom: "1rem" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <MediaLibraryPicker name="desktop_banner" label="Desktop Banner" mediaFiles={mediaFiles} defaultValue={fieldMap.desktop_banner || ""} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <MediaLibraryPicker name="mobile_banner" label="Mobile Banner" mediaFiles={mediaFiles} defaultValue={fieldMap.mobile_banner || ""} />
+                </div>
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Headline</label>
+                <input type="text" name="headline" defaultValue={fieldMap.headline || typeConfig.headline || ""} placeholder="Headline" style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Description</label>
+                <input type="text" name="description" defaultValue={fieldMap.description || typeConfig.description || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Target URL</label>
+                <input type="text" name="target_url" defaultValue={fieldMap.target_url || typeConfig.target_url || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Button Text</label>
+                <input type="text" name="button_text" defaultValue={fieldMap.button_text || typeConfig.button_text || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+            </>
+          )}
+          {blockType === "announcement_bar" && (
+            <>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Message</label>
+                <input type="text" name="announcement_text" required defaultValue={typeConfig.text || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Link URL</label>
+                <input type="text" name="announcement_link" defaultValue={typeConfig.link || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ display: "flex", gap: "15px", marginBottom: "1rem" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Background Color</label>
+                  <input type="color" name="announcement_bg_color" defaultValue={typeConfig.bg_color || "#000000"} style={{ width: "100%", height: "36px", border: "1px solid #c9cccf", borderRadius: "4px" }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Text Color</label>
+                  <input type="color" name="announcement_text_color" defaultValue={typeConfig.text_color || "#ffffff"} style={{ width: "100%", height: "36px", border: "1px solid #c9cccf", borderRadius: "4px" }} />
+                </div>
+              </div>
+            </>
+          )}
+          {blockType === "collection_banner" && (
+            <>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Collection Handle</label>
+                <input type="text" name="collection_handle" required defaultValue={typeConfig.collection_handle || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+              <MediaLibraryPicker name="collection_banner_image" label="Banner Image (optional)" mediaFiles={mediaFiles} defaultValue={fieldMap.desktop_banner || ""} />
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Headline Override</label>
+                <input type="text" name="collection_headline" defaultValue={typeConfig.headline || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Description</label>
+                <input type="text" name="collection_description" defaultValue={typeConfig.description || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Button Text</label>
+                <input type="text" name="collection_button_text" defaultValue={typeConfig.button_text || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+            </>
+          )}
+          {blockType === "countdown_banner" && (
+            <>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Target Date & Time</label>
+                <input type="datetime-local" name="countdown_target_date" required defaultValue={getDateTimeLocal(typeConfig.target_date)} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Headline</label>
+                <input type="text" name="countdown_headline" defaultValue={typeConfig.headline || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Subtext</label>
+                <input type="text" name="countdown_subtext" defaultValue={typeConfig.subtext || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+              <MediaLibraryPicker name="countdown_bg_image" label="Background Image" mediaFiles={mediaFiles} defaultValue={fieldMap.desktop_banner || ""} />
+              <div style={{ display: "flex", gap: "15px", marginBottom: "1rem" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Background Color</label>
+                  <input type="color" name="countdown_bg_color" defaultValue={typeConfig.background_color || "#000000"} style={{ width: "100%", height: "36px", border: "1px solid #c9cccf", borderRadius: "4px" }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Text Color</label>
+                  <input type="color" name="countdown_text_color" defaultValue={typeConfig.text_color || "#ffffff"} style={{ width: "100%", height: "36px", border: "1px solid #c9cccf", borderRadius: "4px" }} />
+                </div>
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Link URL</label>
+                <input type="text" name="countdown_target_url" defaultValue={typeConfig.target_url || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Button Text</label>
+                <input type="text" name="countdown_button_text" defaultValue={typeConfig.button_text || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+            </>
+          )}
+          {blockType === "image_with_text" && (
+            <>
+              <MediaLibraryPicker name="image_with_text_image" label="Image" mediaFiles={mediaFiles} defaultValue={fieldMap.desktop_banner || ""} />
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Headline</label>
+                <input type="text" name="image_with_text_headline" defaultValue={typeConfig.headline || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Description</label>
+                <input type="text" name="image_with_text_description" defaultValue={typeConfig.description || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Button Text</label>
+                <input type="text" name="image_with_text_button_text" defaultValue={typeConfig.button_text || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Button Link</label>
+                <input type="text" name="image_with_text_button_link" defaultValue={typeConfig.button_link || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Layout</label>
+                <select name="image_with_text_layout" defaultValue={typeConfig.layout || "image_left"} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px" }}>
+                  <option value="image_left">Image Left</option>
+                  <option value="image_right">Image Right</option>
+                </select>
+              </div>
+            </>
+          )}
+          {blockType === "background_video" && (
+            <>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Video URL (hosted)</label>
+                <input type="text" name="video_url" defaultValue={typeConfig.video_url || ""} placeholder="https://..." style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+              <MediaLibraryPicker name="video_file" label="Or video from Shopify" mediaFiles={videoFiles} defaultValue={fieldMap.desktop_banner || ""} />
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Headline</label>
+                <input type="text" name="video_headline" defaultValue={typeConfig.headline || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Description</label>
+                <input type="text" name="video_description" defaultValue={typeConfig.description || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Button Text</label>
+                <input type="text" name="video_button_text" defaultValue={typeConfig.button_text || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Button Link</label>
+                <input type="text" name="video_button_link" defaultValue={typeConfig.button_link || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Overlay Opacity (0-100)</label>
+                <input type="number" name="video_overlay_opacity" min={0} max={100} defaultValue={typeConfig.overlay_opacity ?? 50} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px" }} />
+              </div>
+            </>
+          )}
+          {blockType === "promo_card" && (
+            <>
+              <MediaLibraryPicker name="promo_card_image" label="Image" mediaFiles={mediaFiles} defaultValue={fieldMap.desktop_banner || ""} />
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Title</label>
+                <input type="text" name="promo_card_title" defaultValue={typeConfig.title || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Description</label>
+                <input type="text" name="promo_card_description" defaultValue={typeConfig.description || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>CTA Link</label>
+                <input type="text" name="promo_card_cta_url" defaultValue={typeConfig.cta_url || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>CTA Text</label>
+                <input type="text" name="promo_card_cta_text" defaultValue={typeConfig.cta_text || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+            </>
+          )}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem", marginTop: "1.5rem" }}>
             <button
               type="button"
@@ -1593,20 +1934,39 @@ function MediaLibraryPicker({ name, label, mediaFiles = [], defaultValue = "" })
           <span style={{ color: "#666", fontSize: "0.75rem" }}>Browse →</span>
         </button>
         <input type="hidden" ref={hiddenInputRef} name={name} value={selectedFileId} />
-        {selectedFile && selectedFile.url && (
+        {selectedFile && (selectedFile.url || selectedFile.id) && (
           <div style={{ marginTop: "0.5rem" }}>
-            <img
-              src={selectedFile.url}
-              alt={selectedFile.alt || ""}
-              style={{
-                maxWidth: "200px",
-                maxHeight: "150px",
-                objectFit: "contain",
-                border: "1px solid #c9cccf",
-                borderRadius: "4px",
-                padding: "0.25rem",
-              }}
-            />
+            {selectedFile.type === "video" ? (
+              <div
+                style={{
+                  maxWidth: "200px",
+                  height: "100px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: "1px solid #c9cccf",
+                  borderRadius: "4px",
+                  backgroundColor: "#f6f6f7",
+                  fontSize: "0.875rem",
+                  color: "#6d7175",
+                }}
+              >
+                Video selected
+              </div>
+            ) : (
+              <img
+                src={selectedFile.url}
+                alt={selectedFile.alt || ""}
+                style={{
+                  maxWidth: "200px",
+                  maxHeight: "150px",
+                  objectFit: "contain",
+                  border: "1px solid #c9cccf",
+                  borderRadius: "4px",
+                  padding: "0.25rem",
+                }}
+              />
+            )}
             <button
               type="button"
               onClick={() => {

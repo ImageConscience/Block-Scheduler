@@ -1,27 +1,65 @@
 {% comment %}
-  Scheduled Banner block: Filter entries by position_id and date/time range.
-  If multiple matches, selects the one with the most recent start_at.
+  Universal Scheduled Block: Filter entries by position_id, block_type, and date/time range.
+  Supports Hero and Announcement Bar types. If multiple matches, selects the one with most recent start_at.
 {% endcomment %}
 
 {% assign all_entries = metaobjects.schedulable_entity.values %}
 {% assign position_id = block.settings.position_id | default: '' | strip %}
+{% assign allowed_types_str = block.settings.allowed_block_types | default: 'hero' | strip %}
+{% assign allowed_types = allowed_types_str | split: ',' | map: 'strip' %}
 
 {% assign now_ts = 'now' | date: '%s' | plus: 0 %}
 
-{% comment %} Find matching entries and track the one with most recent start_at {% endcomment %}
 {% assign latest_start_ts = 0 %}
+{% assign selected_block_type = blank %}
 {% assign selected_title = blank %}
 {% assign selected_description = blank %}
 {% assign selected_desktop_banner = blank %}
 {% assign selected_mobile_banner = blank %}
 {% assign selected_target_url = blank %}
 {% assign selected_button_text = blank %}
+{% assign selected_announcement_text = blank %}
+{% assign selected_announcement_link = blank %}
+{% assign selected_announcement_bg = blank %}
+{% assign selected_announcement_color = blank %}
+{% assign selected_collection_handle = blank %}
+{% assign selected_collection_image = blank %}
+{% assign selected_countdown_target = blank %}
+{% assign selected_countdown_headline = blank %}
+{% assign selected_countdown_subtext = blank %}
+{% assign selected_countdown_bg_img = blank %}
+{% assign selected_countdown_bg = blank %}
+{% assign selected_countdown_text_color = blank %}
+{% assign selected_countdown_link = blank %}
+{% assign selected_countdown_btn = blank %}
+{% assign selected_iwt_image = blank %}
+{% assign selected_iwt_layout = blank %}
+{% assign selected_video_url = blank %}
+{% assign selected_video_file = blank %}
+{% assign selected_video_overlay = 50 %}
+{% assign selected_promo_image = blank %}
+{% assign selected_promo_title = blank %}
+{% assign selected_promo_desc = blank %}
+{% assign selected_promo_url = blank %}
+{% assign selected_promo_btn = blank %}
+{% assign selected_iwt_link = blank %}
 {% assign found_match = false %}
 
 {% if all_entries != blank %}
   {% for entry in all_entries %}
     {% assign entry_pos = entry.position_id | strip %}
-    {% if entry_pos == position_id %}
+    {% assign entry_block_type = entry.block_type | default: 'hero' | strip %}
+    {% assign type_allowed = false %}
+    {% for at in allowed_types %}
+      {% if at == entry_block_type %}
+        {% assign type_allowed = true %}
+        {% break %}
+      {% endif %}
+    {% endfor %}
+    {% if allowed_types.size == 0 %}
+      {% assign type_allowed = true %}
+    {% endif %}
+    {% if entry_pos == position_id and type_allowed %}
       {% assign start_at_value = entry.start_at %}
       {% assign end_at_value = entry.end_at %}
       
@@ -31,15 +69,55 @@
         
         {% comment %} Check if current time is within the scheduled range: start_at <= NOW < end_at {% endcomment %}
         {% if now_ts >= start_ts and now_ts < end_ts %}
-          {% comment %} This entry matches - check if it has a more recent start time {% endcomment %}
           {% if start_ts > latest_start_ts or latest_start_ts == 0 %}
             {% assign latest_start_ts = start_ts %}
-            {% assign selected_title = entry.headline %}
-            {% assign selected_description = entry.description %}
-            {% assign selected_desktop_banner = entry.desktop_banner %}
-            {% assign selected_mobile_banner = entry.mobile_banner %}
-            {% assign selected_target_url = entry.target_url %}
-            {% assign selected_button_text = entry.button_text %}
+            {% assign selected_block_type = entry_block_type %}
+            {% assign tc_raw = entry.type_config | default: '' %}
+            {% assign tc = blank %}
+            {% if tc_raw != blank %}
+              {% assign tc = tc_raw | json_parse %}
+            {% endif %}
+            {% if tc != blank %}
+              {% assign selected_title = tc.headline | default: entry.headline %}
+              {% assign selected_description = tc.description | default: entry.description %}
+              {% assign selected_desktop_banner = tc.desktop_banner | default: entry.desktop_banner %}
+              {% assign selected_mobile_banner = tc.mobile_banner | default: entry.mobile_banner %}
+              {% assign selected_target_url = tc.target_url | default: entry.target_url %}
+              {% assign selected_button_text = tc.button_text | default: entry.button_text %}
+              {% assign selected_announcement_text = tc.text %}
+              {% assign selected_announcement_link = tc.link %}
+              {% assign selected_announcement_bg = tc.bg_color | default: '#000000' %}
+              {% assign selected_announcement_color = tc.text_color | default: '#ffffff' %}
+              {% assign selected_collection_handle = tc.collection_handle %}
+              {% if tc.image != blank %}{% assign selected_collection_image = entry.desktop_banner %}{% endif %}
+              {% assign selected_countdown_target = tc.target_date %}
+              {% assign selected_countdown_headline = tc.headline %}
+              {% assign selected_countdown_subtext = tc.subtext %}
+              {% if tc.background_image != blank %}{% assign selected_countdown_bg_img = entry.desktop_banner %}{% endif %}
+              {% assign selected_countdown_bg = tc.background_color | default: '#000000' %}
+              {% assign selected_countdown_text_color = tc.text_color | default: '#ffffff' %}
+              {% assign selected_countdown_link = tc.target_url %}
+              {% assign selected_countdown_btn = tc.button_text %}
+              {% assign selected_iwt_image = entry.desktop_banner %}
+              {% assign selected_iwt_layout = tc.layout | default: 'image_left' %}
+              {% assign selected_iwt_link = tc.button_link %}
+              {% assign selected_video_url = tc.video_url %}
+              {% assign selected_video_file = tc.video_file %}
+              {% assign selected_video_overlay = tc.overlay_opacity | default: 50 %}
+              {% assign selected_promo_image = entry.desktop_banner %}
+              {% assign selected_promo_title = tc.title %}
+              {% assign selected_promo_desc = tc.description %}
+              {% assign selected_promo_url = tc.cta_url %}
+              {% assign selected_promo_btn = tc.cta_text %}
+              {% assign selected_iwt_link = tc.button_link %}
+            {% else %}
+              {% assign selected_title = entry.headline %}
+              {% assign selected_description = entry.description %}
+              {% assign selected_desktop_banner = entry.desktop_banner %}
+              {% assign selected_mobile_banner = entry.mobile_banner %}
+              {% assign selected_target_url = entry.target_url %}
+              {% assign selected_button_text = entry.button_text %}
+            {% endif %}
             {% assign found_match = true %}
           {% endif %}
         {% endif %}
@@ -52,8 +130,17 @@
 {% assign margin_top = block.settings.margin_top | default: 20 %}
 {% assign margin_bottom = block.settings.margin_bottom | default: 20 %}
 
-<div class="scheduled-banner {% unless found_match and selected_target_url != blank %}scheduled-banner--hidden{% endunless %}" style="margin-top: {{ margin_top }}px; margin-bottom: {{ margin_bottom }}px;" {{ block.shopify_attributes }}>
-  {% if found_match and selected_target_url != blank %}
+{% assign show_hero = found_match and selected_block_type == 'hero' and selected_target_url != blank %}
+{% assign show_announcement = found_match and selected_block_type == 'announcement_bar' and selected_announcement_text != blank %}
+{% assign show_collection = found_match and selected_block_type == 'collection_banner' and selected_collection_handle != blank %}
+{% assign show_countdown = found_match and selected_block_type == 'countdown_banner' and selected_countdown_target != blank %}
+{% assign show_iwt = found_match and selected_block_type == 'image_with_text' and selected_iwt_image != blank %}
+{% assign show_video = found_match and selected_block_type == 'background_video' and (selected_video_url != blank or selected_video_file != blank) %}
+{% assign show_promo = found_match and selected_block_type == 'promo_card' and selected_promo_image != blank %}
+{% assign show_block = show_hero or show_announcement or show_collection or show_countdown or show_iwt or show_video or show_promo %}
+
+<div class="scheduled-banner {% unless show_block %}scheduled-banner--hidden{% endunless %}" style="margin-top: {{ margin_top }}px; margin-bottom: {{ margin_bottom }}px;" {{ block.shopify_attributes }}>
+  {% if show_hero %}
     {% assign mobile_content_below = block.settings.mobile_content_below | default: false %}
     {% assign overlay_color = block.settings.overlay_color | default: '#000000' %}
     {% assign overlay_opacity = block.settings.overlay_opacity | default: 70 | divided_by: 100.0 %}
@@ -137,8 +224,101 @@
         {% endif %}
       </div>
     </a>
-  {% elsif found_match %}
-    {% comment %} Entry found but missing target URL {% endcomment %}
+  {% elsif show_announcement %}
+    <div class="scheduled-banner__announcement" style="background-color: {{ selected_announcement_bg }}; color: {{ selected_announcement_color }}; padding: 12px 20px; text-align: center; font-size: 0.9rem;">
+      {% if selected_announcement_link != blank %}
+        <a href="{{ selected_announcement_link }}" style="color: inherit; text-decoration: none;">{{ selected_announcement_text }}</a>
+      {% else %}
+        {{ selected_announcement_text }}
+      {% endif %}
+    </div>
+  {% elsif show_collection %}
+    {% assign coll_url = '/collections/' | append: selected_collection_handle %}
+    {% assign coll_img = selected_collection_image | default: collections[selected_collection_handle].image %}
+    {% assign coll_title = selected_title | default: collections[selected_collection_handle].title %}
+    <a href="{{ coll_url }}" class="scheduled-banner__link">
+      <div class="scheduled-banner__collection" style="position: relative; min-height: 200px; overflow: hidden;">
+        {% if coll_img != blank %}
+          {{ coll_img | image_url: width: 1200 | image_tag: alt: coll_title, class: 'scheduled-banner__banner-img', loading: 'lazy' }}
+        {% endif %}
+        <div class="scheduled-banner__banner-content" style="--overlay-color: #000; --overlay-opacity: 0.5;">
+          <h2 class="scheduled-banner__title">{{ coll_title }}</h2>
+          {% if selected_description != blank %}<p class="scheduled-banner__description">{{ selected_description }}</p>{% endif %}
+          {% if selected_button_text != blank %}<span class="scheduled-banner__button">{{ selected_button_text }}</span>{% endif %}
+        </div>
+      </div>
+    </a>
+  {% elsif show_countdown %}
+    {% assign countdown_link = selected_countdown_link | default: '#' %}
+    <a href="{{ countdown_link }}" class="scheduled-banner__link">
+      <div id="countdown-{{ block.id | default: 'main' }}" class="scheduled-banner__countdown" style="background-color: {{ selected_countdown_bg }}; color: {{ selected_countdown_text_color }}; padding: 30px 20px; text-align: center; position: relative;">
+        {% if selected_countdown_bg_img != blank %}
+          <div style="position: absolute; inset: 0; opacity: 0.3;">
+            {{ selected_countdown_bg_img | image_url: width: 1200 | image_tag: loading: 'lazy', style: 'width: 100%; height: 100%; object-fit: cover;' }}
+          </div>
+        {% endif %}
+        <div style="position: relative; z-index: 1;">
+          {% if selected_countdown_headline != blank %}<h2 style="margin: 0 0 10px 0; font-size: 1.5em;">{{ selected_countdown_headline }}</h2>{% endif %}
+          <div class="scheduled-banner__countdown-timer" data-target="{{ selected_countdown_target }}" style="display: flex; justify-content: center; gap: 15px; margin: 15px 0; font-size: 1.2em; font-weight: bold;">
+            <span data-days>0</span>d <span data-hours>0</span>h <span data-mins>0</span>m <span data-secs>0</span>s
+          </div>
+          {% if selected_countdown_subtext != blank %}<p style="margin: 0 0 10px 0;">{{ selected_countdown_subtext }}</p>{% endif %}
+          {% if selected_countdown_btn != blank %}<span class="scheduled-banner__button">{{ selected_countdown_btn }}</span>{% endif %}
+        </div>
+      </div>
+    </a>
+  {% elsif show_iwt %}
+    {% assign iwt_link = selected_iwt_link | default: '#' %}
+    <div class="scheduled-banner__iwt scheduled-banner__iwt--{{ selected_iwt_layout }}" style="display: flex; flex-wrap: wrap; align-items: center; gap: 20px;">
+      {% if selected_iwt_layout == 'image_right' %}
+        <div class="scheduled-banner__iwt-text" style="flex: 1; min-width: 200px; padding: 20px;">
+          {% if selected_title != blank %}<h2 class="scheduled-banner__title">{{ selected_title }}</h2>{% endif %}
+          {% if selected_description != blank %}<p class="scheduled-banner__description">{{ selected_description }}</p>{% endif %}
+          {% if selected_button_text != blank %}<a href="{{ iwt_link }}" class="scheduled-banner__button">{{ selected_button_text }}</a>{% endif %}
+        </div>
+      {% endif %}
+      <div class="scheduled-banner__iwt-img" style="flex: 1; min-width: 200px;">
+        {{ selected_iwt_image | image_url: width: 800 | image_tag: alt: selected_title, loading: 'lazy', style: 'width: 100%; height: auto;' }}
+      </div>
+      {% if selected_iwt_layout == 'image_left' %}
+        <div class="scheduled-banner__iwt-text" style="flex: 1; min-width: 200px; padding: 20px;">
+          {% if selected_title != blank %}<h2 class="scheduled-banner__title">{{ selected_title }}</h2>{% endif %}
+          {% if selected_description != blank %}<p class="scheduled-banner__description">{{ selected_description }}</p>{% endif %}
+          {% if selected_button_text != blank %}<a href="{{ iwt_link }}" class="scheduled-banner__button">{{ selected_button_text }}</a>{% endif %}
+        </div>
+      {% endif %}
+    </div>
+  {% elsif show_video %}
+    {% assign vid_src = selected_video_url %}
+    {% if vid_src == blank and selected_video_file != blank %}
+      {% assign vid_ref = entry.desktop_banner %}
+      {% if vid_ref.sources != blank %}
+        {% assign vid_src = vid_ref.sources[0].url %}
+      {% endif %}
+    {% endif %}
+    {% if vid_src != blank %}
+      <div class="scheduled-banner__video-wrap" style="position: relative; min-height: 300px; overflow: hidden;">
+        <video class="scheduled-banner__video" autoplay muted loop playsinline style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;">
+          <source src="{{ vid_src }}" type="video/mp4">
+        </video>
+        <div class="scheduled-banner__video-overlay" style="position: absolute; inset: 0; background: rgba(0,0,0,{{ selected_video_overlay | divided_by: 100.0 }}); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; color: #fff;">
+          {% if selected_title != blank %}<h2 style="margin: 0 0 10px 0;">{{ selected_title }}</h2>{% endif %}
+          {% if selected_description != blank %}<p style="margin: 0 0 15px 0;">{{ selected_description }}</p>{% endif %}
+          {% if selected_button_text != blank and selected_target_url != blank %}<a href="{{ selected_target_url }}" class="scheduled-banner__button">{{ selected_button_text }}</a>{% endif %}
+        </div>
+      </div>
+    {% endif %}
+  {% elsif show_promo %}
+    <a href="{{ selected_promo_url | default: '#' }}" class="scheduled-banner__link">
+      <div class="scheduled-banner__promo" style="border: 1px solid #e1e3e5; border-radius: 8px; overflow: hidden;">
+        {{ selected_promo_image | image_url: width: 600 | image_tag: alt: selected_promo_title, loading: 'lazy', style: 'width: 100%; height: auto;' }}
+        <div style="padding: 20px;">
+          {% if selected_promo_title != blank %}<h3 style="margin: 0 0 8px 0;">{{ selected_promo_title }}</h3>{% endif %}
+          {% if selected_promo_desc != blank %}<p style="margin: 0 0 12px 0;">{{ selected_promo_desc }}</p>{% endif %}
+          {% if selected_promo_btn != blank %}<span class="scheduled-banner__button">{{ selected_promo_btn }}</span>{% endif %}
+        </div>
+      </div>
+    </a>
   {% endif %}
 </div>
 
@@ -433,12 +613,63 @@
     color: #999;
     font-style: italic;
   }
-  
+
+  .scheduled-banner__announcement {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .scheduled-banner__announcement a {
+    color: inherit;
+    text-decoration: underline;
+  }
+
+  .scheduled-banner__announcement a:hover {
+    text-decoration: none;
+  }
+
+  @media (max-width: 767px) {
+    .scheduled-banner__iwt {
+      flex-direction: column;
+    }
+    .scheduled-banner__iwt--image_right .scheduled-banner__iwt-text {
+      order: -1;
+    }
+  }
 </style>
+{% if show_countdown %}
+<script>
+(function() {
+  var wrap = document.getElementById('countdown-{{ block.id | default: "main" }}');
+  var el = wrap ? wrap.querySelector('.scheduled-banner__countdown-timer') : document.querySelector('.scheduled-banner__countdown-timer[data-target="{{ selected_countdown_target }}"]');
+  if (!el) return;
+  var target = new Date('{{ selected_countdown_target }}').getTime();
+  function update() {
+    var now = Date.now();
+    var diff = Math.max(0, target - now);
+    var d = Math.floor(diff / 86400000);
+    var h = Math.floor((diff % 86400000) / 3600000);
+    var m = Math.floor((diff % 3600000) / 60000);
+    var s = Math.floor((diff % 60000) / 1000);
+    var days = el.querySelector('[data-days]');
+    var hours = el.querySelector('[data-hours]');
+    var mins = el.querySelector('[data-mins]');
+    var secs = el.querySelector('[data-secs]');
+    if (days) days.textContent = d;
+    if (hours) hours.textContent = String(h).padStart(2,'0');
+    if (mins) mins.textContent = String(m).padStart(2,'0');
+    if (secs) secs.textContent = String(s).padStart(2,'0');
+  }
+  update();
+  setInterval(update, 1000);
+})();
+</script>
+{% endif %}
 
 {% schema %}
 {
-  "name": "Scheduled Banner",
+  "name": "Scheduled Block",
   "target": "section",
   "settings": [
     {
@@ -447,6 +678,13 @@
       "label": "Position ID",
       "info": "The position ID to filter scheduled content by",
       "default": "homepage_banner"
+    },
+    {
+      "type": "text",
+      "id": "allowed_block_types",
+      "label": "Allowed block types",
+      "info": "Comma-separated: hero, announcement_bar, collection_banner, countdown_banner, image_with_text, background_video, promo_card. Empty = all.",
+      "default": "hero"
     },
     {
       "type": "number",
