@@ -10,6 +10,96 @@ import { BLOCK_TYPES, DEFAULT_BLOCK_TYPE } from "../constants/block-types";
 const METAOBJECTS_PAGE_SIZE = 100;
 const FILES_PAGE_SIZE = 250;
 
+/** Fetch all metaobjects via cursor pagination */
+async function fetchAllMetaobjects(admin) {
+  const allNodes = [];
+  let after = null;
+  const query = `#graphql
+    query ListSchedulableEntities($first: Int!, $after: String) {
+      metaobjects(type: "schedulable_entity", first: $first, after: $after) {
+        nodes {
+          id
+          handle
+          fields {
+            key
+            value
+            reference {
+              ... on MediaImage {
+                id
+                image { url }
+              }
+            }
+          }
+          capabilities { publishable { status } }
+          updatedAt
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }
+  `;
+  do {
+    const response = await admin.graphql(query, {
+      variables: { first: METAOBJECTS_PAGE_SIZE, after },
+    });
+    const json = await response.json();
+    if (json?.errors) throw new Error(json.errors.map((e) => e.message).join(", "));
+    const data = json?.data?.metaobjects;
+    if (!data) break;
+    allNodes.push(...(data.nodes ?? []));
+    const pageInfo = data.pageInfo;
+    if (!pageInfo?.hasNextPage) break;
+    after = pageInfo.endCursor;
+  } while (true);
+  return allNodes;
+}
+
+/** Fetch all files via cursor pagination */
+async function fetchAllFiles(admin, queryFilter, pageSize = 250) {
+  const allEdges = [];
+  let after = null;
+  const gql = `#graphql
+    query GetFiles($first: Int!, $after: String, $fileQuery: String) {
+      files(first: $first, after: $after, query: $fileQuery) {
+        edges {
+          node {
+            id
+            createdAt
+            ... on MediaImage {
+              alt
+              image { url width height }
+            }
+            ... on MediaVideo {
+              alt
+              sources { url mimeType }
+            }
+          }
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }
+  `;
+  do {
+    const response = await admin.graphql(gql, {
+      variables: { first: pageSize, after, fileQuery: queryFilter },
+    });
+    const json = await response.json();
+    if (json?.errors) throw new Error(json.errors.map((e) => e.message).join(", "));
+    const data = json?.data?.files;
+    if (!data) break;
+    allEdges.push(...(data.edges ?? []));
+    const pageInfo = data.pageInfo;
+    if (!pageInfo?.hasNextPage) break;
+    after = pageInfo.endCursor;
+  } while (true);
+  return allEdges;
+}
+
 export const loader = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
 
@@ -39,44 +129,12 @@ export const loader = async ({ request }) => {
       logger.warn("Could not fetch shop timezone:", shopError);
     }
 
-    const response = await admin.graphql(
-      `#graphql
-      query ListSchedulableEntities($first: Int!) {
-        metaobjects(type: "schedulable_entity", first: $first) {
-          nodes {
-            id
-            handle
-            fields {
-              key
-              value
-              reference {
-                ... on MediaImage {
-                  id
-                  image {
-                    url
-                  }
-                }
-              }
-            }
-            capabilities {
-              publishable {
-                status
-              }
-            }
-            updatedAt
-          }
-        }
-      }
-    `,
-      { variables: { first: METAOBJECTS_PAGE_SIZE } },
-    );
-    const jsonResponse = await response.json();
-
-    logger.debug("Loader GraphQL response:", JSON.stringify(jsonResponse, null, 2));
-
-    if (jsonResponse?.errors) {
-      logger.error("GraphQL errors in loader:", JSON.stringify(jsonResponse.errors, null, 2));
-      const errorMessages = jsonResponse.errors.map((e) => e.message).join(", ");
+    let entries = [];
+    try {
+      entries = await fetchAllMetaobjects(admin);
+      logger.debug("Loader fetched", entries.length, "metaobject entries");
+    } catch (metaError) {
+      const errorMessages = metaError.message || "";
       if (errorMessages.includes("metaobject definition") || errorMessages.includes("type")) {
         logger.warn("Metaobject definition may not exist yet. Returning empty entries.");
         return {
@@ -89,74 +147,35 @@ export const loader = async ({ request }) => {
           error: "Metaobject definition not found. Please ensure the app has been properly installed.",
         };
       }
-      throw new Error(`GraphQL error: ${errorMessages}`);
+      throw metaError;
     }
-
-    const entries = jsonResponse?.data?.metaobjects?.nodes ?? [];
 
     let mediaFiles = [];
     let videoFiles = [];
     try {
-      const [imgResponse, vidResponse] = await Promise.all([
-        admin.graphql(
-          `#graphql
-          query GetImageFiles($first: Int!) {
-            files(first: $first, query: "media_type:image") {
-              edges {
-                node {
-                  id
-                  createdAt
-                  ... on MediaImage {
-                    alt
-                    image { url width height }
-                  }
-                }
-              }
-            }
-          }
-        `,
-          { variables: { first: FILES_PAGE_SIZE } },
-        ),
-        admin.graphql(
-          `#graphql
-          query GetVideoFiles($first: Int!) {
-            files(first: $first, query: "media_type:video") {
-              edges {
-                node {
-                  id
-                  createdAt
-                  ... on MediaVideo {
-                    alt
-                    sources { url mimeType }
-                  }
-                }
-              }
-            }
-          }
-        `,
-          { variables: { first: 50 } },
-        ),
+      const [imgEdges, vidEdges] = await Promise.all([
+        fetchAllFiles(admin, "media_type:image", FILES_PAGE_SIZE),
+        fetchAllFiles(admin, "media_type:video", 100),
       ]);
-      const imgJson = await imgResponse.json();
-      const vidJson = await vidResponse.json();
-      mediaFiles =
-        imgJson?.data?.files?.edges?.map((edge) => ({
+      mediaFiles = imgEdges
+        .map((edge) => ({
           id: edge.node.id,
           url: edge.node.image?.url || "",
           alt: edge.node.alt || "",
           createdAt: edge.node.createdAt,
           type: "image",
-        })) || [];
-      videoFiles =
-        vidJson?.data?.files?.edges?.map((edge) => ({
+        }))
+        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+      videoFiles = vidEdges
+        .map((edge) => ({
           id: edge.node.id,
           url: edge.node.sources?.[0]?.url || "",
           alt: edge.node.alt || "",
           createdAt: edge.node.createdAt,
           type: "video",
-        })) || [];
-      mediaFiles.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-      videoFiles.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        }))
+        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+      logger.debug("Loader fetched", mediaFiles.length, "images and", videoFiles.length, "videos");
     } catch (error) {
       logger.error("Error loading media files:", error);
     }
@@ -977,7 +996,6 @@ export const action = async ({ request }) => {
         target_url: cdLink || null,
         button_text: cdBtn || null,
       });
-      const cdBgImg = String(formData.get("countdown_bg_image") || "").trim();
       if (cdBgImg) fields.push({ key: "desktop_banner", value: cdBgImg });
     } else if (blockType === "image_with_text") {
       const iwtImage = String(formData.get("image_with_text_image") || "").trim();

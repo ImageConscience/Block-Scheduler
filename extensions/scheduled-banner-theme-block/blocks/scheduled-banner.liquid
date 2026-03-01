@@ -36,6 +36,7 @@
 {% assign selected_iwt_layout = blank %}
 {% assign selected_video_url = blank %}
 {% assign selected_video_file = blank %}
+{% assign selected_video_file_ref = blank %}
 {% assign selected_video_overlay = 50 %}
 {% assign selected_promo_image = blank %}
 {% assign selected_promo_title = blank %}
@@ -103,6 +104,7 @@
               {% assign selected_iwt_link = tc.button_link %}
               {% assign selected_video_url = tc.video_url %}
               {% assign selected_video_file = tc.video_file %}
+              {% if tc.video_file != blank %}{% assign selected_video_file_ref = entry.desktop_banner %}{% endif %}
               {% assign selected_video_overlay = tc.overlay_opacity | default: 50 %}
               {% assign selected_promo_image = entry.desktop_banner %}
               {% assign selected_promo_title = tc.title %}
@@ -167,7 +169,7 @@
     {% assign button_bg_below = block.settings.button_bg_below | default: '#667eea' %}
     {% assign button_text_below = block.settings.button_text_below | default: '#ffffff' %}
     
-    <a href="{{ selected_target_url }}" class="scheduled-banner__link">
+    <a href="{{ selected_target_url }}" class="scheduled-banner__link scheduled-banner__hero-link" style="--headline-size: {{ headline_font_size }}em; --desc-size: {{ description_font_size }}em; --btn-size: {{ button_font_size }}em; --btn-radius: {{ button_border_radius }}px; --btn-pad-t: {{ button_padding_top }}px; --btn-pad-r: {{ button_padding_right }}px; --btn-pad-b: {{ button_padding_bottom }}px; --btn-pad-l: {{ button_padding_left }}px; --title-overlay: {{ title_color_overlay }}; --desc-overlay: {{ description_color_overlay }}; --btn-bg-overlay: {{ button_bg_overlay }}; --btn-text-overlay: {{ button_text_overlay }}; --title-below: {{ title_color_below }}; --desc-below: {{ description_color_below }}; --btn-bg-below: {{ button_bg_below }}; --btn-text-below: {{ button_text_below }}; --headline-below-size: {{ headline_font_size | times: 0.8 }}em;{% if title_font != blank %} --title-font: {{ title_font.family }}, {{ title_font.fallback_families }}; --title-weight: {{ title_font.weight }}; --title-style: {{ title_font.style }};{% endif %}{% if description_font != blank %} --desc-font: {{ description_font.family }}, {{ description_font.fallback_families }}; --desc-weight: {{ description_font.weight }}; --desc-style: {{ description_font.style }};{% endif %}{% if button_text_uppercase %} --btn-uppercase: uppercase;{% else %} --btn-uppercase: none;{% endif %}">
       <div class="scheduled-banner__banner-container {% if mobile_content_below %}scheduled-banner__banner-container--mobile-below{% endif %}">
         {% if selected_desktop_banner != blank %}
           <div class="scheduled-banner__banner scheduled-banner__banner--desktop">
@@ -175,13 +177,13 @@
             <div class="scheduled-banner__banner-content scheduled-banner__banner-content--desktop scheduled-banner__banner-content--v-{{ vertical_alignment }} scheduled-banner__banner-content--align-{{ content_alignment_desktop }}" style="--overlay-color: {{ overlay_color }}; --overlay-opacity: {{ overlay_opacity }};">
               <div class="scheduled-banner__content-inner">
                 {% if selected_title != blank %}
-                  <h2 class="scheduled-banner__title" style="font-size: {{ headline_font_size }}em; color: {{ title_color_overlay }};{% if title_font != blank %}font-family: {{ title_font.family }}, {{ title_font.fallback_families }}; font-weight: {{ title_font.weight }}; font-style: {{ title_font.style }};{% endif %}">{{ selected_title }}</h2>
+                  <h2 class="scheduled-banner__title scheduled-banner__title--overlay">{{ selected_title }}</h2>
                 {% endif %}
                 {% if selected_description != blank %}
-                  <p class="scheduled-banner__description" style="font-size: {{ description_font_size }}em; color: {{ description_color_overlay }};{% if description_font != blank %}font-family: {{ description_font.family }}, {{ description_font.fallback_families }}; font-weight: {{ description_font.weight }}; font-style: {{ description_font.style }};{% endif %}">{{ selected_description }}</p>
+                  <p class="scheduled-banner__description scheduled-banner__description--overlay">{{ selected_description }}</p>
                 {% endif %}
                 {% if selected_button_text != blank %}
-                  <span class="scheduled-banner__button scheduled-banner__button--overlay" style="padding: {{ button_padding_top }}px {{ button_padding_right }}px {{ button_padding_bottom }}px {{ button_padding_left }}px; font-size: {{ button_font_size }}em; border-radius: {{ button_border_radius }}px; background-color: {{ button_bg_overlay }}; color: {{ button_text_overlay }};{% if button_text_uppercase %}text-transform: uppercase;{% endif %}">{{ selected_button_text }}</span>
+                  <span class="scheduled-banner__button scheduled-banner__button--overlay">{{ selected_button_text }}</span>
                 {% endif %}
               </div>
             </div>
@@ -195,13 +197,13 @@
               <div class="scheduled-banner__banner-content scheduled-banner__banner-content--mobile scheduled-banner__banner-content--v-{{ vertical_alignment }} scheduled-banner__banner-content--align-{{ content_alignment_mobile }}" style="--overlay-color: {{ overlay_color }}; --overlay-opacity: {{ overlay_opacity }};">
                 <div class="scheduled-banner__content-inner">
                   {% if selected_title != blank %}
-                    <h2 class="scheduled-banner__title" style="font-size: {{ headline_font_size }}em; color: {{ title_color_overlay }};{% if title_font != blank %}font-family: {{ title_font.family }}, {{ title_font.fallback_families }}; font-weight: {{ title_font.weight }}; font-style: {{ title_font.style }};{% endif %}">{{ selected_title }}</h2>
+                    <h2 class="scheduled-banner__title scheduled-banner__title--overlay">{{ selected_title }}</h2>
                   {% endif %}
                   {% if selected_description != blank %}
-                    <p class="scheduled-banner__description" style="font-size: {{ description_font_size }}em; color: {{ description_color_overlay }};{% if description_font != blank %}font-family: {{ description_font.family }}, {{ description_font.fallback_families }}; font-weight: {{ description_font.weight }}; font-style: {{ description_font.style }};{% endif %}">{{ selected_description }}</p>
+                    <p class="scheduled-banner__description scheduled-banner__description--overlay">{{ selected_description }}</p>
                   {% endif %}
                   {% if selected_button_text != blank %}
-                    <span class="scheduled-banner__button scheduled-banner__button--overlay" style="padding: {{ button_padding_top }}px {{ button_padding_right }}px {{ button_padding_bottom }}px {{ button_padding_left }}px; font-size: {{ button_font_size }}em; border-radius: {{ button_border_radius }}px; background-color: {{ button_bg_overlay }}; color: {{ button_text_overlay }};{% if button_text_uppercase %}text-transform: uppercase;{% endif %}">{{ selected_button_text }}</span>
+                    <span class="scheduled-banner__button scheduled-banner__button--overlay">{{ selected_button_text }}</span>
                   {% endif %}
                 </div>
               </div>
@@ -212,22 +214,22 @@
         {% if mobile_content_below %}
           <div class="scheduled-banner__content-below scheduled-banner__content-below--mobile-only scheduled-banner__content-below--align-{{ content_alignment_mobile }}">
             {% if selected_title != blank %}
-              <h2 class="scheduled-banner__title scheduled-banner__title--below" style="font-size: {{ headline_font_size | times: 0.8 }}em; color: {{ title_color_below }};{% if title_font != blank %}font-family: {{ title_font.family }}, {{ title_font.fallback_families }}; font-weight: {{ title_font.weight }}; font-style: {{ title_font.style }};{% endif %}">{{ selected_title }}</h2>
+              <h2 class="scheduled-banner__title scheduled-banner__title--below">{{ selected_title }}</h2>
             {% endif %}
             {% if selected_description != blank %}
-              <p class="scheduled-banner__description scheduled-banner__description--below" style="font-size: {{ description_font_size }}em; color: {{ description_color_below }};{% if description_font != blank %}font-family: {{ description_font.family }}, {{ description_font.fallback_families }}; font-weight: {{ description_font.weight }}; font-style: {{ description_font.style }};{% endif %}">{{ selected_description }}</p>
+              <p class="scheduled-banner__description scheduled-banner__description--below">{{ selected_description }}</p>
             {% endif %}
             {% if selected_button_text != blank %}
-              <span class="scheduled-banner__button scheduled-banner__button--below" style="padding: {{ button_padding_top }}px {{ button_padding_right }}px {{ button_padding_bottom }}px {{ button_padding_left }}px; font-size: {{ button_font_size }}em; margin: 0; border-radius: {{ button_border_radius }}px; background-color: {{ button_bg_below }}; color: {{ button_text_below }};{% if button_text_uppercase %}text-transform: uppercase;{% endif %}">{{ selected_button_text }}</span>
+              <span class="scheduled-banner__button scheduled-banner__button--below">{{ selected_button_text }}</span>
             {% endif %}
           </div>
         {% endif %}
       </div>
     </a>
   {% elsif show_announcement %}
-    <div class="scheduled-banner__announcement" style="background-color: {{ selected_announcement_bg }}; color: {{ selected_announcement_color }}; padding: 12px 20px; text-align: center; font-size: 0.9rem;">
+    <div class="scheduled-banner__announcement scheduled-banner__announcement--bar" style="background-color: {{ selected_announcement_bg }}; color: {{ selected_announcement_color }};">
       {% if selected_announcement_link != blank %}
-        <a href="{{ selected_announcement_link }}" style="color: inherit; text-decoration: none;">{{ selected_announcement_text }}</a>
+        <a href="{{ selected_announcement_link }}" class="scheduled-banner__announcement-link">{{ selected_announcement_text }}</a>
       {% else %}
         {{ selected_announcement_text }}
       {% endif %}
@@ -237,7 +239,7 @@
     {% assign coll_img = selected_collection_image | default: collections[selected_collection_handle].image %}
     {% assign coll_title = selected_title | default: collections[selected_collection_handle].title %}
     <a href="{{ coll_url }}" class="scheduled-banner__link">
-      <div class="scheduled-banner__collection" style="position: relative; min-height: 200px; overflow: hidden;">
+      <div class="scheduled-banner__collection scheduled-banner__collection--banner">
         {% if coll_img != blank %}
           {{ coll_img | image_url: width: 1200 | image_tag: alt: coll_title, class: 'scheduled-banner__banner-img', loading: 'lazy' }}
         {% endif %}
@@ -251,37 +253,37 @@
   {% elsif show_countdown %}
     {% assign countdown_link = selected_countdown_link | default: '#' %}
     <a href="{{ countdown_link }}" class="scheduled-banner__link">
-      <div id="countdown-{{ block.id | default: 'main' }}" class="scheduled-banner__countdown" style="background-color: {{ selected_countdown_bg }}; color: {{ selected_countdown_text_color }}; padding: 30px 20px; text-align: center; position: relative;">
+      <div id="countdown-{{ block.id | default: 'main' }}" class="scheduled-banner__countdown scheduled-banner__countdown--bar" style="background-color: {{ selected_countdown_bg }}; color: {{ selected_countdown_text_color }};">
         {% if selected_countdown_bg_img != blank %}
-          <div style="position: absolute; inset: 0; opacity: 0.3;">
-            {{ selected_countdown_bg_img | image_url: width: 1200 | image_tag: loading: 'lazy', style: 'width: 100%; height: 100%; object-fit: cover;' }}
+          <div class="scheduled-banner__countdown-bg">
+            {{ selected_countdown_bg_img | image_url: width: 1200 | image_tag: alt: '', loading: 'lazy', class: 'scheduled-banner__countdown-bg-img' }}
           </div>
         {% endif %}
-        <div style="position: relative; z-index: 1;">
-          {% if selected_countdown_headline != blank %}<h2 style="margin: 0 0 10px 0; font-size: 1.5em;">{{ selected_countdown_headline }}</h2>{% endif %}
-          <div class="scheduled-banner__countdown-timer" data-target="{{ selected_countdown_target }}" style="display: flex; justify-content: center; gap: 15px; margin: 15px 0; font-size: 1.2em; font-weight: bold;">
+        <div class="scheduled-banner__countdown-inner">
+          {% if selected_countdown_headline != blank %}<h2 class="scheduled-banner__countdown-headline">{{ selected_countdown_headline }}</h2>{% endif %}
+          <div class="scheduled-banner__countdown-timer" data-target="{{ selected_countdown_target }}">
             <span data-days>0</span>d <span data-hours>0</span>h <span data-mins>0</span>m <span data-secs>0</span>s
           </div>
-          {% if selected_countdown_subtext != blank %}<p style="margin: 0 0 10px 0;">{{ selected_countdown_subtext }}</p>{% endif %}
+          {% if selected_countdown_subtext != blank %}<p class="scheduled-banner__countdown-subtext">{{ selected_countdown_subtext }}</p>{% endif %}
           {% if selected_countdown_btn != blank %}<span class="scheduled-banner__button">{{ selected_countdown_btn }}</span>{% endif %}
         </div>
       </div>
     </a>
   {% elsif show_iwt %}
     {% assign iwt_link = selected_iwt_link | default: '#' %}
-    <div class="scheduled-banner__iwt scheduled-banner__iwt--{{ selected_iwt_layout }}" style="display: flex; flex-wrap: wrap; align-items: center; gap: 20px;">
+    <div class="scheduled-banner__iwt scheduled-banner__iwt--{{ selected_iwt_layout }}">
       {% if selected_iwt_layout == 'image_right' %}
-        <div class="scheduled-banner__iwt-text" style="flex: 1; min-width: 200px; padding: 20px;">
+        <div class="scheduled-banner__iwt-text">
           {% if selected_title != blank %}<h2 class="scheduled-banner__title">{{ selected_title }}</h2>{% endif %}
           {% if selected_description != blank %}<p class="scheduled-banner__description">{{ selected_description }}</p>{% endif %}
           {% if selected_button_text != blank %}<a href="{{ iwt_link }}" class="scheduled-banner__button">{{ selected_button_text }}</a>{% endif %}
         </div>
       {% endif %}
-      <div class="scheduled-banner__iwt-img" style="flex: 1; min-width: 200px;">
-        {{ selected_iwt_image | image_url: width: 800 | image_tag: alt: selected_title, loading: 'lazy', style: 'width: 100%; height: auto;' }}
+      <div class="scheduled-banner__iwt-img">
+        {{ selected_iwt_image | image_url: width: 800 | image_tag: alt: selected_title, loading: 'lazy', class: 'scheduled-banner__iwt-img-el' }}
       </div>
       {% if selected_iwt_layout == 'image_left' %}
-        <div class="scheduled-banner__iwt-text" style="flex: 1; min-width: 200px; padding: 20px;">
+        <div class="scheduled-banner__iwt-text">
           {% if selected_title != blank %}<h2 class="scheduled-banner__title">{{ selected_title }}</h2>{% endif %}
           {% if selected_description != blank %}<p class="scheduled-banner__description">{{ selected_description }}</p>{% endif %}
           {% if selected_button_text != blank %}<a href="{{ iwt_link }}" class="scheduled-banner__button">{{ selected_button_text }}</a>{% endif %}
@@ -290,31 +292,31 @@
     </div>
   {% elsif show_video %}
     {% assign vid_src = selected_video_url %}
-    {% if vid_src == blank and selected_video_file != blank %}
-      {% assign vid_ref = entry.desktop_banner %}
+    {% if vid_src == blank and selected_video_file != blank and selected_video_file_ref != blank %}
+      {% assign vid_ref = selected_video_file_ref %}
       {% if vid_ref.sources != blank %}
         {% assign vid_src = vid_ref.sources[0].url %}
       {% endif %}
     {% endif %}
     {% if vid_src != blank %}
-      <div class="scheduled-banner__video-wrap" style="position: relative; min-height: 300px; overflow: hidden;">
-        <video class="scheduled-banner__video" autoplay muted loop playsinline style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;">
+      <div class="scheduled-banner__video-wrap">
+        <video class="scheduled-banner__video" autoplay muted loop playsinline>
           <source src="{{ vid_src }}" type="video/mp4">
         </video>
-        <div class="scheduled-banner__video-overlay" style="position: absolute; inset: 0; background: rgba(0,0,0,{{ selected_video_overlay | divided_by: 100.0 }}); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; color: #fff;">
-          {% if selected_title != blank %}<h2 style="margin: 0 0 10px 0;">{{ selected_title }}</h2>{% endif %}
-          {% if selected_description != blank %}<p style="margin: 0 0 15px 0;">{{ selected_description }}</p>{% endif %}
+        <div class="scheduled-banner__video-overlay" style="background-color: rgba(0,0,0,{{ selected_video_overlay | divided_by: 100.0 }});">
+          {% if selected_title != blank %}<h2 class="scheduled-banner__video-title">{{ selected_title }}</h2>{% endif %}
+          {% if selected_description != blank %}<p class="scheduled-banner__video-desc">{{ selected_description }}</p>{% endif %}
           {% if selected_button_text != blank and selected_target_url != blank %}<a href="{{ selected_target_url }}" class="scheduled-banner__button">{{ selected_button_text }}</a>{% endif %}
         </div>
       </div>
     {% endif %}
   {% elsif show_promo %}
     <a href="{{ selected_promo_url | default: '#' }}" class="scheduled-banner__link">
-      <div class="scheduled-banner__promo" style="border: 1px solid #e1e3e5; border-radius: 8px; overflow: hidden;">
-        {{ selected_promo_image | image_url: width: 600 | image_tag: alt: selected_promo_title, loading: 'lazy', style: 'width: 100%; height: auto;' }}
-        <div style="padding: 20px;">
-          {% if selected_promo_title != blank %}<h3 style="margin: 0 0 8px 0;">{{ selected_promo_title }}</h3>{% endif %}
-          {% if selected_promo_desc != blank %}<p style="margin: 0 0 12px 0;">{{ selected_promo_desc }}</p>{% endif %}
+      <div class="scheduled-banner__promo scheduled-banner__promo--card">
+        {{ selected_promo_image | image_url: width: 600 | image_tag: alt: selected_promo_title, loading: 'lazy', class: 'scheduled-banner__promo-img' }}
+        <div class="scheduled-banner__promo-body">
+          {% if selected_promo_title != blank %}<h3 class="scheduled-banner__promo-title">{{ selected_promo_title }}</h3>{% endif %}
+          {% if selected_promo_desc != blank %}<p class="scheduled-banner__promo-desc">{{ selected_promo_desc }}</p>{% endif %}
           {% if selected_promo_btn != blank %}<span class="scheduled-banner__button">{{ selected_promo_btn }}</span>{% endif %}
         </div>
       </div>
@@ -528,9 +530,39 @@
     font-weight: bold;
     line-height: 1.2;
   }
+
+  .scheduled-banner__hero-link .scheduled-banner__title--overlay {
+    font-size: var(--headline-size, 2.5em);
+    color: var(--title-overlay, #fff);
+    font-family: var(--title-font, inherit);
+    font-weight: var(--title-weight, bold);
+    font-style: var(--title-style, normal);
+  }
+
+  .scheduled-banner__hero-link .scheduled-banner__description--overlay {
+    font-size: var(--desc-size, 0.9em);
+    color: var(--desc-overlay, #fff);
+    font-family: var(--desc-font, inherit);
+    font-weight: var(--desc-weight, normal);
+    font-style: var(--desc-style, normal);
+  }
+
+  .scheduled-banner__hero-link .scheduled-banner__button--overlay {
+    padding: var(--btn-pad-t, 12px) var(--btn-pad-r, 30px) var(--btn-pad-b, 12px) var(--btn-pad-l, 30px);
+    font-size: var(--btn-size, 1em);
+    border-radius: var(--btn-radius, 6px);
+    background-color: var(--btn-bg-overlay, #fff);
+    color: var(--btn-text-overlay, #667eea);
+    text-transform: var(--btn-uppercase, none);
+  }
   
   .scheduled-banner__title--below {
     margin: 0 0 10px 0;
+    font-size: var(--headline-below-size, 2em);
+    color: var(--title-below, #2c3e50);
+    font-family: var(--title-font, inherit);
+    font-weight: var(--title-weight, bold);
+    font-style: var(--title-style, normal);
   }
   
   .scheduled-banner__description {
@@ -540,6 +572,20 @@
   
   .scheduled-banner__description--below {
     margin: 0 0 15px 0;
+    font-size: var(--desc-size, 0.9em);
+    color: var(--desc-below, #666);
+    font-family: var(--desc-font, inherit);
+    font-weight: var(--desc-weight, normal);
+    font-style: var(--desc-style, normal);
+  }
+
+  .scheduled-banner__content-below .scheduled-banner__button--below {
+    padding: var(--btn-pad-t, 12px) var(--btn-pad-r, 30px) var(--btn-pad-b, 12px) var(--btn-pad-l, 30px);
+    font-size: var(--btn-size, 1em);
+    border-radius: var(--btn-radius, 6px);
+    background-color: var(--btn-bg-below, #667eea);
+    color: var(--btn-text-below, #fff);
+    text-transform: var(--btn-uppercase, none);
   }
   
   .scheduled-banner__content-below--align-left {
@@ -620,6 +666,17 @@
     box-sizing: border-box;
   }
 
+  .scheduled-banner__announcement--bar {
+    padding: 12px 20px;
+    text-align: center;
+    font-size: 0.9rem;
+  }
+
+  .scheduled-banner__announcement .scheduled-banner__announcement-link {
+    color: inherit;
+    text-decoration: none;
+  }
+
   .scheduled-banner__announcement a {
     color: inherit;
     text-decoration: underline;
@@ -627,6 +684,132 @@
 
   .scheduled-banner__announcement a:hover {
     text-decoration: none;
+  }
+
+  .scheduled-banner__collection--banner {
+    position: relative;
+    min-height: 200px;
+    overflow: hidden;
+  }
+
+  .scheduled-banner__countdown--bar {
+    padding: 30px 20px;
+    text-align: center;
+    position: relative;
+  }
+
+  .scheduled-banner__countdown-bg {
+    position: absolute;
+    inset: 0;
+    opacity: 0.3;
+  }
+
+  .scheduled-banner__countdown-bg-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .scheduled-banner__countdown-inner {
+    position: relative;
+    z-index: 1;
+  }
+
+  .scheduled-banner__countdown-headline {
+    margin: 0 0 10px 0;
+    font-size: 1.5em;
+  }
+
+  .scheduled-banner__countdown-timer {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin: 15px 0;
+    font-size: 1.2em;
+    font-weight: bold;
+  }
+
+  .scheduled-banner__countdown-subtext {
+    margin: 0 0 10px 0;
+  }
+
+  .scheduled-banner__iwt {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .scheduled-banner__iwt-text {
+    flex: 1;
+    min-width: 200px;
+    padding: 20px;
+  }
+
+  .scheduled-banner__iwt-img {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .scheduled-banner__iwt-img-el {
+    width: 100%;
+    height: auto;
+  }
+
+  .scheduled-banner__video-wrap {
+    position: relative;
+    min-height: 300px;
+    overflow: hidden;
+  }
+
+  .scheduled-banner__video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .scheduled-banner__video-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    color: #fff;
+  }
+
+  .scheduled-banner__video-title {
+    margin: 0 0 10px 0;
+  }
+
+  .scheduled-banner__video-desc {
+    margin: 0 0 15px 0;
+  }
+
+  .scheduled-banner__promo--card {
+    border: 1px solid #e1e3e5;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .scheduled-banner__promo-img {
+    width: 100%;
+    height: auto;
+  }
+
+  .scheduled-banner__promo-body {
+    padding: 20px;
+  }
+
+  .scheduled-banner__promo-title {
+    margin: 0 0 8px 0;
+  }
+
+  .scheduled-banner__promo-desc {
+    margin: 0 0 12px 0;
   }
 
   @media (max-width: 767px) {
