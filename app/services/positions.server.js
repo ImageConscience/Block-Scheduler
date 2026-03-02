@@ -1,9 +1,29 @@
 import prisma from "../db.server";
-import crypto from "crypto";
 
-/** Generate a URL-safe unique handle for new positions */
-function generateHandle() {
-  return `pos_${crypto.randomBytes(6).toString("base64url")}`;
+/** Convert name to Shopify-style handle: lowercase, spaces to hyphens, alphanumeric + hyphens only */
+function handleize(name) {
+  if (!name || typeof name !== "string") return "position";
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "") || "position";
+}
+
+/** Get unique handle for a new position; if base exists, append -2, -3, etc. */
+async function getUniqueHandle(shop, baseHandle) {
+  let handle = baseHandle;
+  let n = 1;
+  while (true) {
+    const existing = await prisma.blockPosition.findFirst({
+      where: { shop, handle },
+    });
+    if (!existing) return handle;
+    n += 1;
+    handle = `${baseHandle}-${n}`;
+  }
 }
 
 /** Ensure default position exists for shop. Call on load. */
@@ -46,11 +66,12 @@ export async function getPositionByHandle(shop, handle) {
   });
 }
 
-/** Create a new position */
+/** Create a new position. Handle is handleized from name (e.g. "Homepage Banner" -> "homepage-banner"). */
 export async function createPosition(shop, { name, description }) {
-  const handle = generateHandle();
+  const baseHandle = handleize(name || "Position");
+  const handle = await getUniqueHandle(shop, baseHandle);
   return prisma.blockPosition.create({
-    data: { shop, name, description: description || null, handle },
+    data: { shop, name: (name || "Position").trim(), description: description || null, handle },
   });
 }
 

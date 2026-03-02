@@ -32,8 +32,12 @@ const shopify = shopifyApp({
         }
         const shop = session?.shop;
         if (shop) {
+          const { ensureSchedulerPositionDefinition, syncAllPositionsToMetaobjects } = await import("./services/positions-metaobject.server.js");
+          const defResult = await ensureSchedulerPositionDefinition(admin);
+          if (!defResult.ok) {
+            logger.warn("[afterAuth] scheduler_position definition:", defResult.error);
+          }
           const { listPositions } = await import("./services/positions.server.js");
-          const { syncAllPositionsToMetaobjects } = await import("./services/positions-metaobject.server.js");
           const positions = await listPositions(shop);
           await syncAllPositionsToMetaobjects(admin, positions);
         }

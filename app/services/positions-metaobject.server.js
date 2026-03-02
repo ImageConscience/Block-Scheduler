@@ -7,6 +7,69 @@ import { logger } from "../utils/logger.server";
 /** Type matches TOML [metaobjects.app.scheduler_position] -> $app:scheduler_position */
 const METAOBJECT_TYPE = "$app:scheduler_position";
 
+/** Ensure scheduler_position metaobject definition exists on the shop. Creates via GraphQL if TOML deploy didn't. */
+export async function ensureSchedulerPositionDefinition(admin) {
+  try {
+    const checkRes = await admin.graphql(
+      `#graphql
+      query($type: String!) {
+        metaobjectDefinitionByType(type: $type) {
+          id
+          type
+          name
+        }
+      }
+    `,
+      { variables: { type: METAOBJECT_TYPE } },
+    );
+    const checkJson = await checkRes.json();
+    if (checkJson?.data?.metaobjectDefinitionByType?.id) {
+      logger.debug("scheduler_position metaobject definition exists");
+      return { ok: true };
+    }
+    logger.info("Creating scheduler_position metaobject definition");
+    const createRes = await admin.graphql(
+      `#graphql
+      mutation CreateSchedulerPositionDefinition($definition: MetaobjectDefinitionCreateInput!) {
+        metaobjectDefinitionCreate(definition: $definition) {
+          metaobjectDefinition { id type name }
+          userErrors { field message }
+        }
+      }
+    `,
+      {
+        variables: {
+          definition: {
+            type: METAOBJECT_TYPE,
+            name: "Scheduler Position",
+            fieldDefinitions: [
+              { key: "name", name: "Name", type: "single_line_text_field" },
+              { key: "description", name: "Description", type: "multi_line_text_field" },
+            ],
+            access: { admin: "MERCHANT_READ_WRITE", storefront: "PUBLIC_READ" },
+          },
+        },
+      },
+    );
+    const createJson = await createRes.json();
+    const errs = createJson?.data?.metaobjectDefinitionCreate?.userErrors;
+    if (errs?.length) {
+      const msg = errs.map((e) => e.message).join(", ");
+      if (msg.includes("taken") || msg.includes("TAKEN") || msg.includes("already exists")) {
+        logger.debug("scheduler_position definition already exists (from TOML or prior create)");
+        return { ok: true };
+      }
+      logger.warn("ensureSchedulerPositionDefinition errors:", errs);
+      return { ok: false, error: msg };
+    }
+    logger.info("Created scheduler_position metaobject definition");
+    return { ok: true };
+  } catch (e) {
+    logger.error("ensureSchedulerPositionDefinition error:", e);
+    return { ok: false, error: e.message };
+  }
+}
+
 /** Sync all positions to metaobjects (for existing positions, run on app load) */
 export async function syncAllPositionsToMetaobjects(admin, positions) {
   for (const p of positions || []) {
