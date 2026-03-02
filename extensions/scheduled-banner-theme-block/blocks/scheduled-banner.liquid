@@ -214,9 +214,9 @@
   {% if show_hero %}
     {% assign mobile_content_below = selected_mobile_content_below | default: false %}
     {% assign overlay_color = selected_overlay_color | default: '#000000' %}
-    {% comment %} Only use default when truly unset - preserve 0 and all 0-100 values from range slider {% endcomment %}
+    {% comment %} Only use default when truly unset - preserve 0 and all 0-100 values from range slider. Default 0 = no overlay when not set. {% endcomment %}
     {% if selected_overlay_opacity == nil or selected_overlay_opacity == '' %}
-      {% assign overlay_opacity_raw = 70 %}
+      {% assign overlay_opacity_raw = 0 %}
     {% else %}
       {% assign overlay_opacity_raw = selected_overlay_opacity %}
     {% endif %}
