@@ -23,10 +23,12 @@ export async function ensureSchedulerPositionDefinition(admin) {
       { variables: { type: METAOBJECT_TYPE } },
     );
     const checkJson = await checkRes.json();
-    if (checkJson?.data?.metaobjectDefinitionByType?.id) {
-      logger.debug("scheduler_position metaobject definition exists");
+    const def = checkJson?.data?.metaobjectDefinitionByType;
+    if (def?.id) {
+      logger.info("[scheduler_position] metaobject definition exists: type=%s id=%s", def.type, def.id);
       return { ok: true };
     }
+    logger.warn("[scheduler_position] metaobject definition NOT found for type=%s. checkJson=%s", METAOBJECT_TYPE, JSON.stringify(checkJson));
     logger.info("Creating scheduler_position metaobject definition");
     const createRes = await admin.graphql(
       `#graphql
