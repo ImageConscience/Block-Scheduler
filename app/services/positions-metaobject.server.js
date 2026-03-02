@@ -72,6 +72,10 @@ export async function ensureSchedulerPositionDefinition(admin) {
 
 /** Sync all positions to metaobjects (for existing positions, run on app load) */
 export async function syncAllPositionsToMetaobjects(admin, positions) {
+  const hasUncategorized = (positions || []).some((p) => p.handle === "uncategorized");
+  if (hasUncategorized) {
+    await deletePositionMetaobject(admin, "homepage_banner");
+  }
   for (const p of positions || []) {
     try {
       const existing = await admin.graphql(

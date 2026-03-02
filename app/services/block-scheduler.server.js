@@ -56,6 +56,50 @@ async function fetchAllMetaobjects(admin) {
   return allNodes;
 }
 
+const LEGACY_POSITION_HANDLE = "homepage_banner";
+const DEFAULT_POSITION_HANDLE = "uncategorized";
+
+/** Migrate schedulable_entity entries with position_id "homepage_banner" to "uncategorized". */
+async function migratePositionIdInEntries(admin, nodes) {
+  const toMigrate = (nodes || []).filter((n) => {
+    const posField = (n.fields || []).find((f) => f.key === "position_id");
+    return posField && String(posField.value || "").trim() === LEGACY_POSITION_HANDLE;
+  });
+  if (toMigrate.length === 0) return;
+  logger.info("[migrate] Updating", toMigrate.length, "entries from position_id homepage_banner to uncategorized");
+  for (const node of toMigrate) {
+    try {
+      const res = await admin.graphql(
+        `#graphql
+        mutation UpdatePositionId($id: ID!, $metaobject: MetaobjectUpdateInput!) {
+          metaobjectUpdate(id: $id, metaobject: $metaobject) {
+            metaobject { id }
+            userErrors { field message }
+          }
+        }
+      `,
+        {
+          variables: {
+            id: node.id,
+            metaobject: {
+              fields: [{ key: "position_id", value: DEFAULT_POSITION_HANDLE }],
+            },
+          },
+        },
+      );
+      const json = await res.json();
+      if (json?.data?.metaobjectUpdate?.userErrors?.length) {
+        logger.warn("[migrate] Failed to update entry", node.id, json.data.metaobjectUpdate.userErrors);
+      } else {
+        const posField = (node.fields || []).find((f) => f.key === "position_id");
+        if (posField) posField.value = DEFAULT_POSITION_HANDLE;
+      }
+    } catch (e) {
+      logger.warn("[migrate] Error updating entry", node.id, e);
+    }
+  }
+}
+
 /** Fetch all files via cursor pagination */
 async function fetchAllFiles(admin, queryFilter, pageSize = 250) {
   const allEdges = [];
@@ -133,6 +177,7 @@ export const loader = async ({ request }) => {
     let entries = [];
     try {
       entries = await fetchAllMetaobjects(admin);
+      await migratePositionIdInEntries(admin, entries);
       logger.debug("Loader fetched", entries.length, "metaobject entries");
     } catch (metaError) {
       const errorMessages = metaError.message || "";

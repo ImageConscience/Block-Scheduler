@@ -10,7 +10,7 @@
 {% if position_ref != blank and position_ref.system != blank %}
   {% assign position_id = position_ref.system.handle | default: '' | strip %}
 {% else %}
-  {% assign position_id = block.settings.position_id | default: 'homepage_banner' | strip %}
+  {% assign position_id = block.settings.position_id | default: 'uncategorized' | strip %}
 {% endif %}
 {% comment %} All block types allowed when scheduled for this position {% endcomment %}
 {% assign now_ts = 'now' | date: '%s' | plus: 0 %}

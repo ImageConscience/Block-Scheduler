@@ -26,28 +26,42 @@ async function getUniqueHandle(shop, baseHandle) {
   }
 }
 
-/** Ensure default position exists for shop. Call on load. */
+const DEFAULT_POSITION_HANDLE = "uncategorized";
+
+/** Ensure default position exists for shop. Call on load. Uncategorized is the default bucket for unsorted content. */
 export async function ensureDefaultPosition(shop) {
-  const existing = await prisma.blockPosition.findFirst({
+  const existingByNewHandle = await prisma.blockPosition.findFirst({
+    where: { shop, handle: DEFAULT_POSITION_HANDLE },
+  });
+  if (existingByNewHandle) return existingByNewHandle;
+
+  const legacy = await prisma.blockPosition.findFirst({
     where: { shop, handle: "homepage_banner" },
   });
-  if (existing) {
-    if (existing.name === "Homepage Banner") {
-      return prisma.blockPosition.update({
-        where: { id: existing.id },
-        data: { name: "Uncategorized", description: "Default position for scheduled content" },
-      });
-    }
-    return existing;
+  if (legacy) {
+    return prisma.blockPosition.update({
+      where: { id: legacy.id },
+      data: {
+        name: "Uncategorized",
+        description: "Default position for scheduled content",
+        handle: DEFAULT_POSITION_HANDLE,
+      },
+    });
   }
+
   return prisma.blockPosition.create({
     data: {
       shop,
       name: "Uncategorized",
       description: "Default position for scheduled content",
-      handle: "homepage_banner",
+      handle: DEFAULT_POSITION_HANDLE,
     },
   });
+}
+
+/** True if position is the default bucket (not editable/deletable) */
+export function isDefaultPosition(position) {
+  return position?.handle === DEFAULT_POSITION_HANDLE;
 }
 
 /** List all positions for a shop */
@@ -75,10 +89,11 @@ export async function createPosition(shop, { name, description }) {
   });
 }
 
-/** Update a position */
+/** Update a position. Cannot update the default Uncategorized position. */
 export async function updatePosition(shop, id, { name, description }) {
   const existing = await prisma.blockPosition.findFirst({ where: { id, shop } });
   if (!existing) return null;
+  if (existing.handle === DEFAULT_POSITION_HANDLE) return null;
   return prisma.blockPosition.update({
     where: { id },
     data: {
@@ -88,9 +103,10 @@ export async function updatePosition(shop, id, { name, description }) {
   });
 }
 
-/** Delete a position */
+/** Delete a position. Cannot delete the default Uncategorized position. */
 export async function deletePosition(shop, id) {
   const existing = await prisma.blockPosition.findFirst({ where: { id, shop } });
   if (!existing) return null;
+  if (existing.handle === DEFAULT_POSITION_HANDLE) return null;
   return prisma.blockPosition.delete({ where: { id } });
 }

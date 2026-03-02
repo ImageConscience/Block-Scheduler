@@ -386,6 +386,7 @@ export default function BlockSchedulerPage() {
               <select
                 name="position_id"
                 required
+                defaultValue="uncategorized"
                 style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", fontSize: "0.875rem" }}
               >
                 <option value="">Select position...</option>
@@ -1352,8 +1353,8 @@ export default function BlockSchedulerPage() {
       {/* Positions Section */}
       <s-section>
         <h2 style={{ fontSize: "1.2rem", lineHeight: 1.1, margin: "0 0 10px 0" }}>Positions</h2>
-        <p style={{ fontSize: "0.875rem", color: "#6d7175", margin: "0 0 1rem 0" }}>
-          Positions are placement slots for scheduled content. Create positions here, then select them when creating entries and use the <strong>handle</strong> in your theme block settings.
+            <p style={{ fontSize: "0.875rem", color: "#6d7175", margin: "0 0 1rem 0" }}>
+          Positions are placement slots for scheduled content. <strong>Uncategorized</strong> is the default bucket for entries not assigned to a specific position. Create additional positions, then select them when creating entries and use the <strong>handle</strong> in your theme block settings.
         </p>
         <div style={{ overflowX: "auto", border: "1px solid #e1e3e5", borderRadius: "8px", marginBottom: "1rem" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.875rem" }}>
@@ -1366,36 +1367,44 @@ export default function BlockSchedulerPage() {
               </tr>
             </thead>
             <tbody>
-              {positions.map((p) => (
-                <tr key={p.id} style={{ borderBottom: "1px solid #e1e3e5" }}>
-                  <td style={{ padding: "0.75rem" }}>{p.name}</td>
-                  <td style={{ padding: "0.75rem", fontFamily: "monospace", fontSize: "0.8125rem" }}>
-                    <code style={{ backgroundColor: "#f0f0f0", padding: "2px 6px", borderRadius: "4px" }}>{p.handle}</code>
-                  </td>
-                  <td style={{ padding: "0.75rem", color: "#6d7175" }}>{p.description || "—"}</td>
-                  <td style={{ padding: "0.75rem", textAlign: "center" }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPositionEditTarget(p);
-                        setPositionFormName(p.name);
-                        setPositionFormDesc(p.description || "");
-                        setPositionModalOpen(true);
-                      }}
-                      style={{ marginRight: "0.5rem", fontSize: "0.8125rem", color: "#667eea", cursor: "pointer", background: "none", border: "none", textDecoration: "underline" }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPositionDeleteConfirm(p)}
-                      style={{ fontSize: "0.8125rem", color: "#d72c0d", cursor: "pointer", background: "none", border: "none", textDecoration: "underline" }}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {positions.map((p) => {
+                const isDefault = p.handle === "uncategorized";
+                return (
+                  <tr key={p.id} style={{ borderBottom: "1px solid #e1e3e5" }}>
+                    <td style={{ padding: "0.75rem" }}>{p.name}</td>
+                    <td style={{ padding: "0.75rem", fontFamily: "monospace", fontSize: "0.8125rem" }}>
+                      <code style={{ backgroundColor: "#f0f0f0", padding: "2px 6px", borderRadius: "4px" }}>{p.handle}</code>
+                    </td>
+                    <td style={{ padding: "0.75rem", color: "#6d7175" }}>{p.description || "—"}</td>
+                    <td style={{ padding: "0.75rem", textAlign: "center" }}>
+                      {!isDefault && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPositionEditTarget(p);
+                              setPositionFormName(p.name);
+                              setPositionFormDesc(p.description || "");
+                              setPositionModalOpen(true);
+                            }}
+                            style={{ marginRight: "0.5rem", fontSize: "0.8125rem", color: "#667eea", cursor: "pointer", background: "none", border: "none", textDecoration: "underline" }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPositionDeleteConfirm(p)}
+                            style={{ fontSize: "0.8125rem", color: "#d72c0d", cursor: "pointer", background: "none", border: "none", textDecoration: "underline" }}
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
+                      {isDefault && <span style={{ fontSize: "0.8125rem", color: "#6d7175" }}>Default bucket</span>}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
