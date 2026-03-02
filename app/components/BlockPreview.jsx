@@ -29,6 +29,7 @@ export default function BlockPreview({ blockType, data = {}, mediaFiles = [], vi
   const imgHeightMobileKey = (data.image_height_mobile || "adapt_to_image").trim() || "adapt_to_image";
   const heightSpec = isMobile ? HEIGHT_MAP[imgHeightMobileKey] : HEIGHT_MAP[imgHeightKey];
   const bannerMinHeight = heightSpec === null ? undefined : (typeof heightSpec === "string" ? heightSpec : (isMobile ? heightSpec.mobile : heightSpec.desktop));
+  const isAdaptToImage = heightSpec === null;
 
   const imgFit = (isMobile ? (data.image_fit_mobile || data.image_fit) : (data.image_fit || data.image_fit_mobile)) || "cover";
   const btnBg = data.button_bg_color || "#ffffff";
@@ -55,11 +56,7 @@ export default function BlockPreview({ blockType, data = {}, mediaFiles = [], vi
 
   const previewStyles = {
     container: {
-      ...(variant === "pane" ? { marginTop: 0 } : { marginTop: "1rem" }),
-      padding: "1rem",
-      backgroundColor: "#f9fafb",
-      borderRadius: "8px",
-      border: "1px solid #e1e3e5",
+      ...(variant === "pane" ? { marginTop: 0, padding: 0, backgroundColor: "transparent", borderRadius: 0, border: "none" } : { marginTop: "1rem", padding: "1rem", backgroundColor: "#f9fafb", borderRadius: "8px", border: "1px solid #e1e3e5" }),
     },
     label: {
       fontSize: "0.75rem",
@@ -145,7 +142,7 @@ export default function BlockPreview({ blockType, data = {}, mediaFiles = [], vi
     borderRadius: 24,
     overflow: "hidden",
     boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
-    minHeight: 400,
+    minHeight: isAdaptToImage ? 0 : 400,
   };
 
   const cssClass = (data.css_class || "").trim();
@@ -162,13 +159,13 @@ export default function BlockPreview({ blockType, data = {}, mediaFiles = [], vi
       {customCss && <style dangerouslySetInnerHTML={{ __html: customCss }} />}
       {variant !== "pane" && <div style={previewStyles.label}>Preview</div>}
       {blockType === "hero" && (
-        <div style={{ ...previewStyles.hero, minHeight: bannerMinHeight ?? 200 }}>
+        <div style={{ ...previewStyles.hero, minHeight: isAdaptToImage ? undefined : (bannerMinHeight ?? 200), ...(variant === "pane" ? { borderRadius: 0 } : {}) }}>
           {(heroImgUrl || imgUrl) && (
-            <img
-              src={heroImgUrl || imgUrl}
-              alt=""
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: imgFit }}
-            />
+            isAdaptToImage ? (
+              <img src={heroImgUrl || imgUrl} alt="" style={{ display: "block", width: "100%", height: "auto", verticalAlign: "top" }} />
+            ) : (
+              <img src={heroImgUrl || imgUrl} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: imgFit }} />
+            )
           )}
           <div style={{ ...previewStyles.heroOverlay, alignItems: textAlign === "center" ? "center" : textAlign === "right" ? "flex-end" : "flex-start", textAlign }}>
             {(data.headline || data.description || data.button_text) && (
@@ -198,8 +195,8 @@ export default function BlockPreview({ blockType, data = {}, mediaFiles = [], vi
         </div>
       )}
       {blockType === "collection_banner" && (
-        <div style={{ position: "relative", minHeight: bannerMinHeight ?? 200, borderRadius: "6px", overflow: "hidden", backgroundColor: "#e1e3e5" }}>
-          {imgUrl && <img src={imgUrl} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: imgFit }} />}
+        <div style={{ position: "relative", minHeight: isAdaptToImage ? undefined : (bannerMinHeight ?? 200), borderRadius: variant === "pane" ? 0 : "6px", overflow: "hidden", backgroundColor: "#e1e3e5" }}>
+          {imgUrl && (isAdaptToImage ? <img src={imgUrl} alt="" style={{ display: "block", width: "100%", height: "auto", verticalAlign: "top" }} /> : <img src={imgUrl} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: imgFit }} />)}
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "12px", background: overlayOpacity > 0 ? `linear-gradient(transparent, rgba(${hexToRgb(overlayColor)},${overlayOpacity}))` : "transparent", color: "#fff", textAlign }}>
             <div style={previewStyles.headline}>{data.collection_headline || `Collection: ${data.collection_handle || "..."}`}</div>
             {data.collection_description && <div style={previewStyles.description}>{data.collection_description}</div>}

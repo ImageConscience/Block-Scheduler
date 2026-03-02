@@ -266,7 +266,7 @@ export default function BlockSchedulerPage() {
           >
             <style>{`
               .create-modal-dialog .create-modal-body { display: flex; flex-direction: row; flex: 1; min-height: 0; }
-              .create-modal-dialog .create-modal-preview { flex: 0 0 60%; padding: 1.5rem; border-right: 1px solid #e1e3e5; display: flex; flex-direction: column; min-width: 0; overflow-y: auto; }
+              .create-modal-dialog .create-modal-preview { flex: 0 0 60%; padding: 0; border-right: 1px solid #e1e3e5; display: flex; flex-direction: column; min-width: 0; overflow-y: auto; }
               .create-modal-dialog .create-modal-data { flex: 1; min-width: 0; overflow-y: auto; padding: 1.5rem; }
               .create-modal-dialog .create-modal-data .data-field-row { flex-direction: column; }
               .create-modal-dialog.create-modal-stacked .create-modal-body { flex-direction: column; }
@@ -298,7 +298,7 @@ export default function BlockSchedulerPage() {
             {/* Modal Content: two-column layout */}
             <div className="create-modal-body">
               <div className="create-modal-preview">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.5rem 1.5rem 0.75rem 1.5rem" }}>
                   <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#6d7175", textTransform: "uppercase" }}>Preview</span>
                   <div style={{ display: "flex", gap: "0.25rem" }}>
                     <button
@@ -1568,7 +1568,7 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
       >
         <style>{`
           .edit-modal-dialog .edit-modal-body { display: flex; flex-direction: row; flex: 1; min-height: 0; }
-          .edit-modal-dialog .edit-modal-preview { flex: 0 0 60%; padding: 1.5rem; border-right: 1px solid #e1e3e5; display: flex; flex-direction: column; min-width: 0; overflow-y: auto; }
+          .edit-modal-dialog .edit-modal-preview { flex: 0 0 60%; padding: 0; border-right: 1px solid #e1e3e5; display: flex; flex-direction: column; min-width: 0; overflow-y: auto; }
           .edit-modal-dialog .edit-modal-data { flex: 1; min-width: 0; overflow-y: auto; padding: 1.5rem; }
           .edit-modal-dialog .edit-modal-data .data-field-row { flex-direction: column; }
           .edit-modal-dialog.edit-modal-stacked .edit-modal-body { flex-direction: column; }
@@ -1599,7 +1599,7 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
         <form ref={editFormRef} onSubmit={handleSubmit} onInput={handleEditFormInput} style={{ display: "flex", flex: 1, flexDirection: "column", minHeight: 0 }}>
           <div className="edit-modal-body">
             <div className="edit-modal-preview">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.5rem 1.5rem 0.75rem 1.5rem" }}>
                 <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#6d7175", textTransform: "uppercase" }}>Preview</span>
                 <div style={{ display: "flex", gap: "0.25rem" }}>
                   <button
