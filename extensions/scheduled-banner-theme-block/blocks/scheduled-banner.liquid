@@ -97,7 +97,7 @@
               {% assign selected_video_url = tc.video_url %}
               {% assign selected_video_file = tc.video_file %}
               {% if tc.video_file != blank %}{% assign selected_video_file_ref = entry.desktop_banner %}{% endif %}
-              {% assign selected_video_overlay = tc.overlay_opacity | default: 50 %}
+              {% if tc.overlay_opacity == nil or tc.overlay_opacity == '' %}{% assign selected_video_overlay = 50 %}{% else %}{% assign selected_video_overlay = tc.overlay_opacity %}{% endif %}
               {% assign selected_promo_image = entry.desktop_banner %}
               {% assign selected_promo_title = tc.title %}
               {% assign selected_promo_desc = tc.description %}
@@ -214,10 +214,11 @@
   {% if show_hero %}
     {% assign mobile_content_below = selected_mobile_content_below | default: false %}
     {% assign overlay_color = selected_overlay_color | default: '#000000' %}
-    {% if selected_overlay_opacity != blank %}
-      {% assign overlay_opacity_raw = selected_overlay_opacity %}
-    {% else %}
+    {% comment %} Only use default when truly unset - preserve 0 and all 0-100 values from range slider {% endcomment %}
+    {% if selected_overlay_opacity == nil or selected_overlay_opacity == '' %}
       {% assign overlay_opacity_raw = 70 %}
+    {% else %}
+      {% assign overlay_opacity_raw = selected_overlay_opacity %}
     {% endif %}
     {% assign overlay_opacity = overlay_opacity_raw | divided_by: 100.0 %}
     {% assign vertical_alignment = selected_vertical_alignment | default: 'bottom' %}
@@ -264,7 +265,7 @@
         {% if selected_desktop_banner != blank %}
           <div class="scheduled-banner__banner scheduled-banner__banner--desktop{% if banner_min_d != 'auto' %} scheduled-banner__banner--fixed-height{% endif %}"{% if banner_min_d != 'auto' %} style="min-height: {{ banner_min_d }}; --banner-fit: {{ img_fit_d }};"{% endif %}>
             {{ selected_desktop_banner | image_url: width: 1920 | image_tag: alt: selected_title, class: 'scheduled-banner__banner-img', loading: 'lazy' }}
-            <div class="scheduled-banner__banner-content scheduled-banner__banner-content--desktop scheduled-banner__banner-content--v-{{ vertical_alignment }} scheduled-banner__banner-content--align-{{ content_alignment_desktop }}" style="--overlay-color: {{ overlay_color }}; --overlay-opacity: {{ overlay_opacity }};">
+            <div class="scheduled-banner__banner-content scheduled-banner__banner-content--desktop scheduled-banner__banner-content--v-{{ vertical_alignment }} scheduled-banner__banner-content--align-{{ content_alignment_desktop }}{% if overlay_opacity == 0 %} scheduled-banner__banner-content--no-overlay{% endif %}" style="--overlay-color: {{ overlay_color }}; --overlay-opacity: {{ overlay_opacity }};">
               <div class="scheduled-banner__content-inner">
                 {% if selected_title != blank %}
                   <h2 class="scheduled-banner__title scheduled-banner__title--overlay">{{ selected_title }}</h2>
@@ -284,7 +285,7 @@
           <div class="scheduled-banner__banner scheduled-banner__banner--mobile{% if banner_min_m != 'auto' %} scheduled-banner__banner--fixed-height{% endif %}"{% if banner_min_m != 'auto' %} style="min-height: {{ banner_min_m }}; --banner-fit: {{ img_fit_m }};"{% endif %}>
             {{ selected_mobile_banner | image_url: width: 768 | image_tag: alt: selected_title, class: 'scheduled-banner__banner-img', loading: 'lazy' }}
             {% if mobile_content_below == false %}
-              <div class="scheduled-banner__banner-content scheduled-banner__banner-content--mobile scheduled-banner__banner-content--v-{{ vertical_alignment }} scheduled-banner__banner-content--align-{{ content_alignment_mobile }}" style="--overlay-color: {{ overlay_color }}; --overlay-opacity: {{ overlay_opacity }};">
+              <div class="scheduled-banner__banner-content scheduled-banner__banner-content--mobile scheduled-banner__banner-content--v-{{ vertical_alignment }} scheduled-banner__banner-content--align-{{ content_alignment_mobile }}{% if overlay_opacity == 0 %} scheduled-banner__banner-content--no-overlay{% endif %}" style="--overlay-color: {{ overlay_color }}; --overlay-opacity: {{ overlay_opacity }};">
                 <div class="scheduled-banner__content-inner">
                   {% if selected_title != blank %}
                     <h2 class="scheduled-banner__title scheduled-banner__title--overlay">{{ selected_title }}</h2>
@@ -334,8 +335,9 @@
           {{ coll_img | image_url: width: 1200 | image_tag: alt: coll_title, class: 'scheduled-banner__banner-img', loading: 'lazy' }}
         {% endif %}
         {% assign coll_overlay_color = selected_overlay_color | default: '#000000' %}
-        {% assign coll_overlay_opacity = selected_overlay_opacity | default: 50 | divided_by: 100.0 %}
-        <div class="scheduled-banner__banner-content" style="--overlay-color: {{ coll_overlay_color }}; --overlay-opacity: {{ coll_overlay_opacity }};">
+        {% if selected_overlay_opacity == nil or selected_overlay_opacity == '' %}{% assign coll_overlay_raw = 50 %}{% else %}{% assign coll_overlay_raw = selected_overlay_opacity %}{% endif %}
+        {% assign coll_overlay_opacity = coll_overlay_raw | divided_by: 100.0 %}
+        <div class="scheduled-banner__banner-content{% if coll_overlay_opacity == 0 %} scheduled-banner__banner-content--no-overlay{% endif %}" style="--overlay-color: {{ coll_overlay_color }}; --overlay-opacity: {{ coll_overlay_opacity }};">
           <h2 class="scheduled-banner__title">{{ coll_title }}</h2>
           {% if selected_description != blank %}<p class="scheduled-banner__description">{{ selected_description }}</p>{% endif %}
           {% if selected_button_text != blank %}<span class="scheduled-banner__button">{{ selected_button_text }}</span>{% endif %}
@@ -347,7 +349,8 @@
     <a href="{{ countdown_link }}" class="scheduled-banner__link">
       <div id="countdown-{{ block.id | default: 'main' }}" class="scheduled-banner__countdown scheduled-banner__countdown--bar{% if banner_min_d != 'auto' %} scheduled-banner__countdown--fixed-height{% endif %}" style="background-color: {{ selected_countdown_bg }}; color: {{ selected_countdown_text_color }};{% if banner_min_d != 'auto' %} min-height: {{ banner_min_d }}; --banner-fit: {{ img_fit_d }};{% endif %}">
         {% if selected_countdown_bg_img != blank %}
-          {% assign cd_bg_opacity = selected_overlay_opacity | default: 30 | divided_by: 100.0 %}
+          {% if selected_overlay_opacity == nil or selected_overlay_opacity == '' %}{% assign cd_bg_raw = 30 %}{% else %}{% assign cd_bg_raw = selected_overlay_opacity %}{% endif %}
+          {% assign cd_bg_opacity = cd_bg_raw | divided_by: 100.0 %}
           <div class="scheduled-banner__countdown-bg" style="opacity: {{ cd_bg_opacity }};">
             {{ selected_countdown_bg_img | image_url: width: 1200 | image_tag: alt: '', loading: 'lazy', class: 'scheduled-banner__countdown-bg-img' }}
           </div>
@@ -487,6 +490,9 @@
     opacity: var(--overlay-opacity, 0.7);
     pointer-events: none;
     z-index: 0;
+  }
+  .scheduled-banner__banner-content--no-overlay::before {
+    display: none;
   }
   
   .scheduled-banner__banner-content--v-top {
