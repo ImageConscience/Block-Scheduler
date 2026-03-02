@@ -3,7 +3,8 @@
  * Returns metaobject definition info to diagnose theme block Position picker.
  * Remove or protect in production.
  */
-import { json, useLoaderData } from "react-router";
+import { json } from "../utils/responses.server";
+import { useLoaderData } from "react-router";
 import { authenticate } from "../shopify.server";
 
 const CLIENT_ID = "6f5b5ea5d134b8cea5be5397d5cae070";
