@@ -22,7 +22,16 @@ export default function MediaLibraryPicker({ name, label, mediaFiles = [], defau
 
   const selectedFile = localMediaFiles.find((f) => f.id === selectedFileId);
 
-  useEffect(() => setLocalMediaFiles(mediaFiles), [mediaFiles]);
+  useEffect(() => {
+    setLocalMediaFiles((prev) => {
+      const fromLoader = new Map(mediaFiles.map((f) => [f.id, f]));
+      const merged = [...mediaFiles];
+      for (const f of prev) {
+        if (!fromLoader.has(f.id)) merged.unshift(f);
+      }
+      return merged;
+    });
+  }, [mediaFiles]);
   useEffect(() => {
     if (hiddenInputRef.current) hiddenInputRef.current.value = selectedFileId;
   }, [selectedFileId]);

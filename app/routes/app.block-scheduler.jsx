@@ -44,6 +44,7 @@ export default function BlockSchedulerPage() {
   const [userTimezoneOffset, setUserTimezoneOffset] = useState(0);
   const [formBlockType, setFormBlockType] = useState("hero");
   const [previewData, setPreviewData] = useState({});
+  const [previewViewport, setPreviewViewport] = useState("desktop");
   const previewDebounceRef = useRef(null);
   const statusInputId = useId();
   const blockTypes = loaderData?.blockTypes ?? {};
@@ -256,7 +257,7 @@ export default function BlockSchedulerPage() {
               backgroundColor: "white",
               borderRadius: "8px",
               width: "100%",
-              maxWidth: "900px",
+              maxWidth: "1400px",
               maxHeight: "90vh",
               display: "flex",
               flexDirection: "column",
@@ -265,8 +266,9 @@ export default function BlockSchedulerPage() {
           >
             <style>{`
               .create-modal-dialog .create-modal-body { display: flex; flex-direction: row; flex: 1; min-height: 0; }
-              .create-modal-dialog .create-modal-preview { flex: 0 0 320px; padding: 1.5rem; border-right: 1px solid #e1e3e5; display: flex; flex-direction: column; min-width: 0; overflow-y: auto; }
+              .create-modal-dialog .create-modal-preview { flex: 0 0 70%; padding: 1.5rem; border-right: 1px solid #e1e3e5; display: flex; flex-direction: column; min-width: 0; overflow-y: auto; }
               .create-modal-dialog .create-modal-data { flex: 1; min-width: 0; overflow-y: auto; padding: 1.5rem; }
+              .create-modal-dialog .create-modal-data .data-field-row { flex-direction: column; }
               .create-modal-dialog.create-modal-stacked .create-modal-body { flex-direction: column; }
               .create-modal-dialog.create-modal-stacked .create-modal-preview { flex: 0 0 auto; border-right: none; border-bottom: 1px solid #e1e3e5; }
               @media (max-width: 768px) {
@@ -296,12 +298,48 @@ export default function BlockSchedulerPage() {
             {/* Modal Content: two-column layout */}
             <div className="create-modal-body">
               <div className="create-modal-preview">
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+                  <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#6d7175", textTransform: "uppercase" }}>Preview</span>
+                  <div style={{ display: "flex", gap: "0.25rem" }}>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewViewport("desktop")}
+                      style={{
+                        padding: "0.25rem 0.5rem",
+                        fontSize: "0.75rem",
+                        border: "1px solid #c9cccf",
+                        borderRadius: "4px",
+                        background: previewViewport === "desktop" ? "#e1e3e5" : "white",
+                        cursor: "pointer",
+                        fontWeight: previewViewport === "desktop" ? 600 : 400,
+                      }}
+                    >
+                      Desktop
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewViewport("mobile")}
+                      style={{
+                        padding: "0.25rem 0.5rem",
+                        fontSize: "0.75rem",
+                        border: "1px solid #c9cccf",
+                        borderRadius: "4px",
+                        background: previewViewport === "mobile" ? "#e1e3e5" : "white",
+                        cursor: "pointer",
+                        fontWeight: previewViewport === "mobile" ? 600 : 400,
+                      }}
+                    >
+                      Mobile
+                    </button>
+                  </div>
+                </div>
                 <BlockPreview
                   blockType={formBlockType}
                   data={previewData}
                   mediaFiles={loaderMediaFiles || []}
                   videoFiles={loaderVideoFiles || []}
                   variant="pane"
+                  viewport={previewViewport}
                 />
               </div>
               <div className="create-modal-data">
@@ -350,7 +388,7 @@ export default function BlockSchedulerPage() {
                   </p>
                   {formBlockType === "hero" && (
                     <>
-                  <div style={{ display: "flex", gap: "15px", marginBottom: "0.5rem" }}>
+                  <div className="data-field-row" style={{ display: "flex", gap: "15px", marginBottom: "0.5rem" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <MediaLibraryPicker
                         name="desktop_banner"
@@ -404,7 +442,7 @@ export default function BlockSchedulerPage() {
                     name="announcement_link"
                     placeholder="https://example.com"
                   />
-                  <div style={{ display: "flex", gap: "15px", marginBottom: "0.5rem" }}>
+                  <div className="data-field-row" style={{ display: "flex", gap: "15px", marginBottom: "0.5rem" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Background Color</label>
                       <input
@@ -477,7 +515,7 @@ export default function BlockSchedulerPage() {
                     mediaFiles={loaderMediaFiles || []}
                     onSelect={() => setTimeout(updatePreview, 50)}
                   />
-                  <div style={{ display: "flex", gap: "15px", marginBottom: "0.5rem" }}>
+                  <div className="data-field-row" style={{ display: "flex", gap: "15px", marginBottom: "0.5rem" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Background Color</label>
                       <input type="color" name="countdown_bg_color" defaultValue="#000000" style={{ width: "100%", height: "36px", border: "1px solid #c9cccf", borderRadius: "4px" }} />
@@ -549,7 +587,7 @@ export default function BlockSchedulerPage() {
                   <s-text-field label="CTA Text" name="promo_card_cta_text" placeholder="Shop Now" />
                     </>
                   )}
-                  <div style={{ display: "flex", gap: "15px", marginBottom: "0.5rem" }}>
+                  <div className="data-field-row" style={{ display: "flex", gap: "15px", marginBottom: "0.5rem" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <label htmlFor="start_at" style={{ display: "block", marginBottom: "0", fontWeight: "500", fontSize: "0.8125rem" }}>
                         Start Date & Time
@@ -1168,6 +1206,7 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [editPreviewData, setEditPreviewData] = useState({});
+  const [editPreviewViewport, setEditPreviewViewport] = useState("desktop");
   const editFormRef = useRef(null);
   const editPreviewDebounceRef = useRef(null);
   const baseId = useId();
@@ -1381,8 +1420,9 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
       >
         <style>{`
           .edit-modal-dialog .edit-modal-body { display: flex; flex-direction: row; flex: 1; min-height: 0; }
-          .edit-modal-dialog .edit-modal-preview { flex: 0 0 320px; padding: 1.5rem; border-right: 1px solid #e1e3e5; display: flex; flex-direction: column; min-width: 0; overflow-y: auto; }
+          .edit-modal-dialog .edit-modal-preview { flex: 0 0 70%; padding: 1.5rem; border-right: 1px solid #e1e3e5; display: flex; flex-direction: column; min-width: 0; overflow-y: auto; }
           .edit-modal-dialog .edit-modal-data { flex: 1; min-width: 0; overflow-y: auto; padding: 1.5rem; }
+          .edit-modal-dialog .edit-modal-data .data-field-row { flex-direction: column; }
           .edit-modal-dialog.edit-modal-stacked .edit-modal-body { flex-direction: column; }
           .edit-modal-dialog.edit-modal-stacked .edit-modal-preview { flex: 0 0 auto; border-right: none; border-bottom: 1px solid #e1e3e5; }
           @media (max-width: 768px) {
@@ -1411,12 +1451,48 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
         <form ref={editFormRef} onSubmit={handleSubmit} onInput={handleEditFormInput} style={{ display: "flex", flex: 1, flexDirection: "column", minHeight: 0 }}>
           <div className="edit-modal-body">
             <div className="edit-modal-preview">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+                <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#6d7175", textTransform: "uppercase" }}>Preview</span>
+                <div style={{ display: "flex", gap: "0.25rem" }}>
+                  <button
+                    type="button"
+                    onClick={() => setEditPreviewViewport("desktop")}
+                    style={{
+                      padding: "0.25rem 0.5rem",
+                      fontSize: "0.75rem",
+                      border: "1px solid #c9cccf",
+                      borderRadius: "4px",
+                      background: editPreviewViewport === "desktop" ? "#e1e3e5" : "white",
+                      cursor: "pointer",
+                      fontWeight: editPreviewViewport === "desktop" ? 600 : 400,
+                    }}
+                  >
+                    Desktop
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditPreviewViewport("mobile")}
+                    style={{
+                      padding: "0.25rem 0.5rem",
+                      fontSize: "0.75rem",
+                      border: "1px solid #c9cccf",
+                      borderRadius: "4px",
+                      background: editPreviewViewport === "mobile" ? "#e1e3e5" : "white",
+                      cursor: "pointer",
+                      fontWeight: editPreviewViewport === "mobile" ? 600 : 400,
+                    }}
+                  >
+                    Mobile
+                  </button>
+                </div>
+              </div>
               <BlockPreview
                 blockType={blockType}
                 data={editPreviewData}
                 mediaFiles={mediaFiles}
                 videoFiles={videoFiles}
                 variant="pane"
+                viewport={editPreviewViewport}
               />
             </div>
             <div className="edit-modal-data">
@@ -1474,7 +1550,7 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
           <div style={{ marginBottom: "1rem", padding: "0.5rem", backgroundColor: "#f6f6f7", borderRadius: "4px", fontSize: "0.875rem" }}>
             Block type: <strong>{blockTypes[blockType]?.label || blockType}</strong>
           </div>
-          <div style={{ display: "flex", gap: "15px", marginBottom: "1rem" }}>
+          <div className="data-field-row" style={{ display: "flex", gap: "15px", marginBottom: "1rem" }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <label htmlFor={startInputId} style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Start Date & Time</label>
               <input type="datetime-local" id={startInputId} name="start_at" defaultValue={getDateTimeLocal(fieldMap.start_at)} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
@@ -1486,7 +1562,7 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
           </div>
           {blockType === "hero" && (
             <>
-              <div style={{ display: "flex", gap: "15px", marginBottom: "1rem" }}>
+              <div className="data-field-row" style={{ display: "flex", gap: "15px", marginBottom: "1rem" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <MediaLibraryPicker name="desktop_banner" label="Desktop Banner" mediaFiles={mediaFiles} defaultValue={fieldMap.desktop_banner || ""} onSelect={() => setTimeout(updateEditPreview, 50)} />
                 </div>
@@ -1522,7 +1598,7 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
                 <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Link URL</label>
                 <input type="text" name="announcement_link" defaultValue={typeConfig.link || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
               </div>
-              <div style={{ display: "flex", gap: "15px", marginBottom: "1rem" }}>
+              <div className="data-field-row" style={{ display: "flex", gap: "15px", marginBottom: "1rem" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Background Color</label>
                   <input type="color" name="announcement_bg_color" defaultValue={typeConfig.bg_color || "#000000"} style={{ width: "100%", height: "36px", border: "1px solid #c9cccf", borderRadius: "4px" }} />
@@ -1570,7 +1646,7 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
                 <input type="text" name="countdown_subtext" defaultValue={typeConfig.subtext || ""} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
               </div>
               <MediaLibraryPicker name="countdown_bg_image" label="Background Image" mediaFiles={mediaFiles} defaultValue={fieldMap.desktop_banner || ""} onSelect={() => setTimeout(updateEditPreview, 50)} />
-              <div style={{ display: "flex", gap: "15px", marginBottom: "1rem" }}>
+              <div className="data-field-row" style={{ display: "flex", gap: "15px", marginBottom: "1rem" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Background Color</label>
                   <input type="color" name="countdown_bg_color" defaultValue={typeConfig.background_color || "#000000"} style={{ width: "100%", height: "36px", border: "1px solid #c9cccf", borderRadius: "4px" }} />
@@ -1858,7 +1934,14 @@ function MediaLibraryPicker({ name, label, mediaFiles = [], defaultValue = "", o
   const selectedFile = localMediaFiles.find((f) => f.id === selectedFileId);
 
   useEffect(() => {
-    setLocalMediaFiles(mediaFiles);
+    setLocalMediaFiles((prev) => {
+      const fromLoader = new Map(mediaFiles.map((f) => [f.id, f]));
+      const merged = [...mediaFiles];
+      for (const f of prev) {
+        if (!fromLoader.has(f.id)) merged.unshift(f);
+      }
+      return merged;
+    });
   }, [mediaFiles]);
 
   const handleSelectFile = (fileId) => {

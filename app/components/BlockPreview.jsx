@@ -2,7 +2,7 @@
  * Live preview of scheduled block types as they would appear on the storefront.
  * Renders a simplified version of each block type for the Create/Edit modals.
  */
-export default function BlockPreview({ blockType, data = {}, mediaFiles = [], videoFiles = [], variant = "inline" }) {
+export default function BlockPreview({ blockType, data = {}, mediaFiles = [], videoFiles = [], variant = "inline", viewport = "desktop" }) {
   const resolveUrl = (id) => {
     if (!id) return null;
     const file = mediaFiles.find((f) => f.id === id) || videoFiles.find((f) => f.id === id);
@@ -91,9 +91,19 @@ export default function BlockPreview({ blockType, data = {}, mediaFiles = [], vi
 
   if (!blockType) return null;
 
-  return (
-    <div style={previewStyles.container}>
-      <div style={previewStyles.label}>Preview</div>
+  const isMobileFrame = variant === "pane" && viewport === "mobile";
+  const mobileFrameStyle = {
+    maxWidth: 375,
+    margin: "0 auto",
+    border: "8px solid #1a1a1a",
+    borderRadius: 24,
+    overflow: "hidden",
+    boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
+  };
+
+  const content = (
+    <div style={{ ...previewStyles.container, ...(isMobileFrame ? { borderRadius: 0 } : {}) }}>
+      {variant !== "pane" && <div style={previewStyles.label}>Preview</div>}
       {blockType === "hero" && (
         <div style={previewStyles.hero}>
           {imgUrl && (
@@ -222,4 +232,6 @@ export default function BlockPreview({ blockType, data = {}, mediaFiles = [], vi
       )}
     </div>
   );
+
+  return isMobileFrame ? <div style={mobileFrameStyle}>{content}</div> : content;
 }

@@ -71,7 +71,7 @@ async function fetchAllFiles(admin, queryFilter, pageSize = 250) {
               alt
               image { url width height }
             }
-            ... on MediaVideo {
+            ... on Video {
               alt
               sources { url mimeType }
             }
@@ -153,10 +153,14 @@ export const loader = async ({ request }) => {
     let mediaFiles = [];
     let videoFiles = [];
     try {
-      const [imgEdges, vidEdges] = await Promise.all([
-        fetchAllFiles(admin, "media_type:image", FILES_PAGE_SIZE),
-        fetchAllFiles(admin, "media_type:video", 100),
-      ]);
+      let imgEdges = await fetchAllFiles(admin, "media_type:IMAGE", FILES_PAGE_SIZE);
+      let vidEdges = await fetchAllFiles(admin, "media_type:VIDEO", 100);
+      if (imgEdges.length === 0) {
+        const allEdges = await fetchAllFiles(admin, null, FILES_PAGE_SIZE);
+        imgEdges = allEdges.filter((e) => e.node.image != null);
+        vidEdges = allEdges.filter((e) => e.node.sources != null);
+        logger.debug("Media filter returned 0; fetched all files:", allEdges.length, "images:", imgEdges.length, "videos:", vidEdges.length);
+      }
       mediaFiles = imgEdges
         .map((edge) => ({
           id: edge.node.id,
