@@ -331,15 +331,16 @@ export const action = async ({ request }) => {
           css_class: (body.cssClass || "").trim() || null,
           custom_css: (body.customCss || "").trim() || null,
           // Image/Video height & fit (for blocks with media)
-          image_height: body.imageHeight || "adapt_to_width",
-          image_height_mobile: body.imageHeightMobile || "adapt_to_width",
+          image_height: body.imageHeight || "adapt_to_image",
+          image_height_mobile: body.imageHeightMobile || "adapt_to_image",
           image_fit: body.imageFit || "cover",
           image_fit_mobile: body.imageFitMobile || "cover",
           // Button styling
           button_bg_color: body.buttonBgColor || null,
           button_text_color: body.buttonTextColor || null,
           button_border_radius: body.buttonBorderRadius != null ? String(body.buttonBorderRadius) : null,
-          button_padding: body.buttonPadding != null ? String(body.buttonPadding) : null,
+          button_padding_vertical: body.buttonPaddingVertical != null ? String(body.buttonPaddingVertical) : null,
+          button_padding_horizontal: body.buttonPaddingHorizontal != null ? String(body.buttonPaddingHorizontal) : null,
           button_font_size: body.buttonFontSize != null ? String(body.buttonFontSize) : null,
           // Text styling
           headline_font_size: body.headlineFontSize != null ? String(body.headlineFontSize) : null,
@@ -969,14 +970,15 @@ export const action = async ({ request }) => {
 
     const cssClass = String(formData.get("css_class") || "").trim() || null;
     const customCss = String(formData.get("custom_css") || "").trim() || null;
-    const imgHeight = String(formData.get("image_height") || "adapt_to_width").trim();
-    const imgHeightMobile = String(formData.get("image_height_mobile") || "adapt_to_width").trim();
+    const imgHeight = String(formData.get("image_height") || "adapt_to_image").trim();
+    const imgHeightMobile = String(formData.get("image_height_mobile") || "adapt_to_image").trim();
     const imgFit = String(formData.get("image_fit") || "cover").trim();
     const imgFitMobile = String(formData.get("image_fit_mobile") || "cover").trim();
     const btnBg = String(formData.get("button_bg_color") || "").trim() || null;
     const btnText = String(formData.get("button_text_color") || "").trim() || null;
     const btnRadius = formData.get("button_border_radius");
-    const btnPadding = formData.get("button_padding");
+    const btnPadV = formData.get("button_padding_vertical");
+    const btnPadH = formData.get("button_padding_horizontal");
     const btnFontSize = formData.get("button_font_size");
     const headFontSize = formData.get("headline_font_size");
     const descFontSize = formData.get("description_font_size");
@@ -987,14 +989,15 @@ export const action = async ({ request }) => {
       ...c,
       css_class: cssClass,
       custom_css: customCss,
-      image_height: imgHeight || "adapt_to_width",
-      image_height_mobile: imgHeightMobile || "adapt_to_width",
+      image_height: imgHeight || "adapt_to_image",
+      image_height_mobile: imgHeightMobile || "adapt_to_image",
       image_fit: imgFit || "cover",
       image_fit_mobile: imgFitMobile || "cover",
       button_bg_color: btnBg,
       button_text_color: btnText,
       button_border_radius: btnRadius != null && btnRadius !== "" ? String(btnRadius) : null,
-      button_padding: btnPadding != null && btnPadding !== "" ? String(btnPadding) : null,
+      button_padding_vertical: btnPadV != null && btnPadV !== "" ? String(btnPadV) : null,
+      button_padding_horizontal: btnPadH != null && btnPadH !== "" ? String(btnPadH) : null,
       button_font_size: btnFontSize != null && btnFontSize !== "" ? String(btnFontSize) : null,
       headline_font_size: headFontSize != null && headFontSize !== "" ? String(headFontSize) : null,
       description_font_size: descFontSize != null && descFontSize !== "" ? String(descFontSize) : null,

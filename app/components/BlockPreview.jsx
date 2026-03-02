@@ -1,7 +1,6 @@
 const HEIGHT_MAP = {
-  adapt_to_width: null,   // native height when width 100% (default)
-  adapt_to_height: "50vh", // container adapts to image height (min 50vh)
-  adapt_to_image: null,   // backward compat -> same as adapt_to_width
+  adapt_to_image: null,   // exact proportions, width 100%, height from aspect ratio
+  adapt_to_width: null,   // backward compat
   small: { desktop: 200, mobile: 180 },
   medium: { desktop: 320, mobile: 280 },
   large: { desktop: 480, mobile: 360 },
@@ -26,8 +25,8 @@ export default function BlockPreview({ blockType, data = {}, mediaFiles = [], vi
   const imgUrl = resolveUrl(data.desktop_banner || data.mobile_banner || data.image || data.collection_banner_image || data.countdown_bg_image || data.image_with_text_image || data.promo_card_image);
   const videoUrl = data.video_url || resolveUrl(data.video_file);
 
-  const imgHeightKey = (data.image_height || "adapt_to_width").trim() || "adapt_to_width";
-  const imgHeightMobileKey = (data.image_height_mobile || "adapt_to_width").trim() || "adapt_to_width";
+  const imgHeightKey = (data.image_height || "adapt_to_image").trim() || "adapt_to_image";
+  const imgHeightMobileKey = (data.image_height_mobile || "adapt_to_image").trim() || "adapt_to_image";
   const heightSpec = isMobile ? HEIGHT_MAP[imgHeightMobileKey] : HEIGHT_MAP[imgHeightKey];
   const bannerMinHeight = heightSpec === null ? undefined : (typeof heightSpec === "string" ? heightSpec : (isMobile ? heightSpec.mobile : heightSpec.desktop));
 
@@ -35,8 +34,10 @@ export default function BlockPreview({ blockType, data = {}, mediaFiles = [], vi
   const btnBg = data.button_bg_color || "#ffffff";
   const btnColor = data.button_text_color || "#667eea";
   const btnRadius = data.button_border_radius != null && data.button_border_radius !== "" ? `${Number(data.button_border_radius) || 6}px` : "6px";
-  const padVal = data.button_padding != null && data.button_padding !== "" ? String(data.button_padding).trim() : "";
-  const btnPadding = padVal ? (padVal.includes(" ") ? padVal.replace(/\d+/g, (m) => `${m}px`) : `${Number(padVal) || 12}px`) : "8px 16px";
+  const legacyPad = data.button_padding != null && data.button_padding !== "" ? String(data.button_padding).trim().split(/\s+/) : [];
+  const padV = data.button_padding_vertical != null && data.button_padding_vertical !== "" ? Number(data.button_padding_vertical) : (legacyPad[0] != null ? Number(legacyPad[0]) : 12);
+  const padH = data.button_padding_horizontal != null && data.button_padding_horizontal !== "" ? Number(data.button_padding_horizontal) : (legacyPad[1] != null ? Number(legacyPad[1]) : legacyPad[0] != null ? Number(legacyPad[0]) : 24);
+  const btnPadding = `${padV}px ${padH}px`;
   const btnFontSize = data.button_font_size != null && data.button_font_size !== "" ? `${Number(data.button_font_size)}em` : "0.875rem";
   const headSize = data.headline_font_size != null && data.headline_font_size !== "" ? `${Number(data.headline_font_size)}em` : "1rem";
   const descSize = data.description_font_size != null && data.description_font_size !== "" ? `${Number(data.description_font_size)}em` : "0.8rem";

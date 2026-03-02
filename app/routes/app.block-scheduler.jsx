@@ -590,8 +590,7 @@ export default function BlockSchedulerPage() {
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Height (Desktop)</label>
                           <select name="image_height" style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px" }}>
-                            <option value="adapt_to_width">Adapt to width (native height at 100% width)</option>
-                            <option value="adapt_to_height">Adapt to height</option>
+                            <option value="adapt_to_image">Adapt to image (exact proportions, width 100%)</option>
                             <option value="small">Small</option>
                             <option value="medium">Medium</option>
                             <option value="large">Large</option>
@@ -601,8 +600,7 @@ export default function BlockSchedulerPage() {
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Height (Mobile)</label>
                           <select name="image_height_mobile" style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px" }}>
-                            <option value="adapt_to_width">Adapt to width (native height at 100% width)</option>
-                            <option value="adapt_to_height">Adapt to height</option>
+                            <option value="adapt_to_image">Adapt to image (exact proportions, width 100%)</option>
                             <option value="small">Small</option>
                             <option value="medium">Medium</option>
                             <option value="large">Large</option>
@@ -661,15 +659,19 @@ export default function BlockSchedulerPage() {
                       <div className="data-field-row" style={{ display: "flex", gap: "15px", marginBottom: "0" }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Border radius (px)</label>
-                          <input type="number" name="button_border_radius" placeholder="6" min={0} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+                          <input type="number" name="button_border_radius" placeholder="6" defaultValue={6} min={0} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Padding (px)</label>
-                          <input type="number" name="button_padding" placeholder="12 24" min={0} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+                          <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Padding vertical (px)</label>
+                          <input type="number" name="button_padding_vertical" placeholder="12" defaultValue={12} min={0} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Padding horizontal (px)</label>
+                          <input type="number" name="button_padding_horizontal" placeholder="24" defaultValue={24} min={0} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Font size (em)</label>
-                          <input type="number" name="button_font_size" placeholder="1" step={0.1} min={0.5} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+                          <input type="number" name="button_font_size" placeholder="1" defaultValue={1} step={0.1} min={0.5} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
                         </div>
                       </div>
                     </div>
@@ -1399,14 +1401,15 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
       timezoneOffset: formData.get("timezone_offset") || "",
       cssClass: formData.get("css_class") || "",
       customCss: formData.get("custom_css") || "",
-      imageHeight: formData.get("image_height") || "adapt_to_width",
-      imageHeightMobile: formData.get("image_height_mobile") || "adapt_to_width",
+      imageHeight: formData.get("image_height") || "adapt_to_image",
+      imageHeightMobile: formData.get("image_height_mobile") || "adapt_to_image",
       imageFit: formData.get("image_fit") || "cover",
       imageFitMobile: formData.get("image_fit_mobile") || "cover",
       buttonBgColor: formData.get("button_bg_color") || null,
       buttonTextColor: formData.get("button_text_color") || null,
       buttonBorderRadius: formData.get("button_border_radius") || null,
-      buttonPadding: formData.get("button_padding") || null,
+      buttonPaddingVertical: formData.get("button_padding_vertical") || null,
+      buttonPaddingHorizontal: formData.get("button_padding_horizontal") || null,
       buttonFontSize: formData.get("button_font_size") || null,
       headlineFontSize: formData.get("headline_font_size") || null,
       descriptionFontSize: formData.get("description_font_size") || null,
@@ -1892,9 +1895,8 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
                 <div className="data-field-row" style={{ display: "flex", gap: "15px", marginBottom: "0.5rem" }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Height (Desktop)</label>
-                    <select name="image_height" defaultValue={typeConfig.image_height || "adapt_to_width"} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px" }}>
-                      <option value="adapt_to_width">Adapt to width (native height at 100% width)</option>
-                      <option value="adapt_to_height">Adapt to height</option>
+                    <select name="image_height" defaultValue={typeConfig.image_height || "adapt_to_image"} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px" }}>
+                      <option value="adapt_to_image">Adapt to image (exact proportions, width 100%)</option>
                       <option value="small">Small</option>
                       <option value="medium">Medium</option>
                       <option value="large">Large</option>
@@ -1903,9 +1905,8 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Height (Mobile)</label>
-                    <select name="image_height_mobile" defaultValue={typeConfig.image_height_mobile || "adapt_to_width"} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px" }}>
-                      <option value="adapt_to_width">Adapt to width (native height at 100% width)</option>
-                      <option value="adapt_to_height">Adapt to height</option>
+                    <select name="image_height_mobile" defaultValue={typeConfig.image_height_mobile || "adapt_to_image"} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px" }}>
+                      <option value="adapt_to_image">Adapt to image (exact proportions, width 100%)</option>
                       <option value="small">Small</option>
                       <option value="medium">Medium</option>
                       <option value="large">Large</option>
@@ -1962,15 +1963,19 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
                 <div className="data-field-row" style={{ display: "flex", gap: "15px", marginBottom: "0" }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Border radius (px)</label>
-                    <input type="number" name="button_border_radius" defaultValue={typeConfig.button_border_radius ?? ""} placeholder="6" min={0} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+                    <input type="number" name="button_border_radius" defaultValue={typeConfig.button_border_radius ?? 6} placeholder="6" min={0} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Padding (px)</label>
-                    <input type="number" name="button_padding" defaultValue={typeConfig.button_padding ?? ""} placeholder="12 24" min={0} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+                    <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Padding vertical (px)</label>
+                    <input type="number" name="button_padding_vertical" defaultValue={typeConfig.button_padding_vertical ?? typeConfig.button_padding ?? 12} placeholder="12" min={0} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Padding horizontal (px)</label>
+                    <input type="number" name="button_padding_horizontal" defaultValue={typeConfig.button_padding_horizontal ?? typeConfig.button_padding ?? 24} placeholder="24" min={0} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Font size (em)</label>
-                    <input type="number" name="button_font_size" defaultValue={typeConfig.button_font_size ?? ""} placeholder="1" step={0.1} min={0.5} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+                    <input type="number" name="button_font_size" defaultValue={typeConfig.button_font_size ?? 1} placeholder="1" step={0.1} min={0.5} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
                   </div>
                 </div>
               </div>
