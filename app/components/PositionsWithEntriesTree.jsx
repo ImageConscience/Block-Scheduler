@@ -32,6 +32,7 @@ function PositionRow({
   return (
     <div>
       <div
+        {...dragHandleProps}
         style={{
           display: "flex",
           alignItems: "center",
@@ -41,11 +42,9 @@ function PositionRow({
           borderRadius: "6px",
           marginBottom: "0.25rem",
           backgroundColor: "#f9fafb",
+          cursor: "grab",
         }}
       >
-        <span {...dragHandleProps} style={DRAG_HANDLE_STYLE} title="Drag to reorder">
-          ⋮⋮
-        </span>
         <button
           type="button"
           onClick={() => onToggle(position.id)}
@@ -73,20 +72,6 @@ function PositionRow({
         >
           {position.handle}
         </code>
-        <button
-          type="button"
-          onClick={() => onAddEvent?.(position)}
-          style={{
-            fontSize: "0.75rem",
-            color: "#6d7175",
-            cursor: "pointer",
-            background: "none",
-            border: "none",
-            fontWeight: 400,
-          }}
-        >
-          + Event
-        </button>
         {canEdit && (
           <>
             <button
@@ -119,6 +104,22 @@ function PositionRow({
             </button>
           </>
         )}
+        <button
+          type="button"
+          onClick={() => onAddEvent?.(position)}
+          style={{
+            fontSize: "0.75rem",
+            color: "#6d7175",
+            cursor: "pointer",
+            padding: "0.2rem 0.5rem",
+            border: "1px solid #c9cccf",
+            borderRadius: "4px",
+            background: "white",
+            fontWeight: 400,
+          }}
+        >
+          + Event
+        </button>
       </div>
       {isExpanded &&
         (positionEntries.length > 0 ? (

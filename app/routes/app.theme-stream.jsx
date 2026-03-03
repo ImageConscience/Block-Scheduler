@@ -917,11 +917,13 @@ export default function ThemeStreamPage() {
       )}
 
       <s-section>
-        <h2 style={{ fontSize: "1.2rem", lineHeight: 1.1, margin: "0 0 10px 0" }}>Streams & Events</h2>
-        <p style={{ fontSize: "0.875rem", color: "#6d7175", margin: "0 0 1rem 0" }}>
-          Streams are placement slots for scheduled content. <strong>Uncategorized</strong> is the default bucket. Drag to reorder; expand/collapse to show events. Both streams and events support full CRUD.
-        </p>
-        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.5rem" }}>
+          <div>
+            <h2 style={{ fontSize: "1.2rem", lineHeight: 1.1, margin: "0 0 4px 0" }}>Streams</h2>
+            <p style={{ fontSize: "0.875rem", color: "#6d7175", margin: 0 }}>
+              Create Streams and place them in your theme. Then schedule events into the streams to update your site content on schedule.
+            </p>
+          </div>
           <button
             type="button"
             onClick={() => {
@@ -937,32 +939,13 @@ export default function ThemeStreamPage() {
               cursor: "pointer",
               fontSize: "0.875rem",
               fontWeight: "600",
+              flexShrink: 0,
             }}
           >
             New Event
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setPositionEditTarget(null);
-              setPositionFormName("");
-              setPositionFormDesc("");
-              setPositionModalOpen(true);
-            }}
-            style={{
-              padding: "0.5rem 0.75rem",
-              border: "1px solid #008060",
-              borderRadius: "4px",
-              background: "#008060",
-              color: "#fff",
-              cursor: "pointer",
-              fontSize: "0.875rem",
-              fontWeight: "600",
-            }}
-          >
-            Add Stream
-          </button>
         </div>
+        <div style={{ marginTop: "1rem" }}>
         {(positions.length === 0 && initialEntries.length === 0) ? (
           <s-text>No streams or events yet. Add a stream above, then create events.</s-text>
         ) : !clientMounted ? (
@@ -1043,6 +1026,29 @@ export default function ThemeStreamPage() {
             }}
           />
         )}
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setPositionEditTarget(null);
+            setPositionFormName("");
+            setPositionFormDesc("");
+            setPositionModalOpen(true);
+          }}
+          style={{
+            marginTop: "1rem",
+            padding: "0.5rem 0.75rem",
+            border: "1px solid #c9cccf",
+            borderRadius: "4px",
+            background: "white",
+            color: "#202223",
+            cursor: "pointer",
+            fontSize: "0.875rem",
+            fontWeight: "500",
+          }}
+        >
+          Add Stream
+        </button>
       </s-section>
 
       <p style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "#6d7175" }}>
