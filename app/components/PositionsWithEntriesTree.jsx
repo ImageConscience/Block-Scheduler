@@ -1,20 +1,5 @@
 import { useState, useCallback } from "react";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { formatUTCForDisplay } from "./ThemeStream/utils";
 
 const DRAG_HANDLE_STYLE = {
@@ -26,33 +11,25 @@ const DRAG_HANDLE_STYLE = {
   userSelect: "none",
 };
 
-/** Sortable position row (parent) */
-function SortablePosition({
+/** Position row (parent) - used inside Draggable */
+function PositionRow({
   position,
   isExpanded,
   onToggle,
   onEdit,
   onDelete,
   canEdit,
-  children,
+  dragHandleProps,
+  positionEntries,
+  blockTypes,
+  storeTimeZone,
+  onEntryReorder,
+  onEntryEdit,
+  onEntryDelete,
+  onEntryToggleStatus,
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: `position-${position.id}` });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
   return (
-    <div ref={setNodeRef} style={style}>
+    <div>
       <div
         style={{
           display: "flex",
@@ -65,17 +42,12 @@ function SortablePosition({
           backgroundColor: "#f9fafb",
         }}
       >
-        <span
-          {...attributes}
-          {...listeners}
-          style={DRAG_HANDLE_STYLE}
-          title="Drag to reorder"
-        >
+        <span {...dragHandleProps} style={DRAG_HANDLE_STYLE} title="Drag to reorder">
           ⋮⋮
         </span>
         <button
           type="button"
-          onClick={onToggle}
+          onClick={() => onToggle(position.id)}
           style={{
             background: "none",
             border: "none",
@@ -133,19 +105,65 @@ function SortablePosition({
           </>
         )}
       </div>
-      {isExpanded && children}
+      {isExpanded &&
+        (positionEntries.length > 0 ? (
+          <Droppable droppableId={`entries-${position.id}`}>
+            {(provided) => (
+              <div
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+                style={{ marginTop: "0.25rem", marginBottom: "0.5rem" }}
+              >
+                {positionEntries.map((entry, idx) => (
+                  <Draggable
+                    key={entry.id}
+                    draggableId={`entry-${entry.id}`}
+                    index={idx}
+                  >
+                    {(entProvided) => (
+                      <EntryRow
+                        entry={entry}
+                        blockTypes={blockTypes}
+                        storeTimeZone={storeTimeZone}
+                        onEdit={onEntryEdit}
+                        onDelete={onEntryDelete}
+                        onToggleStatus={onEntryToggleStatus}
+                        dragHandleProps={entProvided.dragHandleProps}
+                        provided={entProvided}
+                      />
+                    )}
+                  </Draggable>
+                ))}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        ) : (
+          <div
+            style={{
+              marginLeft: "2rem",
+              padding: "0.5rem",
+              color: "#6d7175",
+              fontSize: "0.8125rem",
+            }}
+          >
+            No entries in this position
+          </div>
+        ))}
     </div>
   );
 }
 
-/** Sortable entry row (child) */
-function SortableEntry({
+/** Entry row (child) */
+function EntryRow({
   entry,
   blockTypes,
   storeTimeZone,
   onEdit,
   onDelete,
   onToggleStatus,
+  dragHandleProps,
+  provided,
 }) {
   const fieldMap = Object.fromEntries(
     (entry.fields || []).map((f) => [f.key, f.value])
@@ -156,21 +174,6 @@ function SortableEntry({
   const isActive = entry.capabilities?.publishable?.status === "ACTIVE";
   const desktopBannerUrl = referenceMap.desktop_banner?.image?.url;
 
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: `entry-${entry.id}` });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
   let startDate = "—";
   let endDate = "—";
   try {
@@ -180,9 +183,10 @@ function SortableEntry({
 
   return (
     <div
-      ref={setNodeRef}
+      ref={provided.innerRef}
+      {...provided.draggableProps}
       style={{
-        ...style,
+        ...provided.draggableProps.style,
         display: "flex",
         alignItems: "center",
         gap: "0.5rem",
@@ -195,12 +199,7 @@ function SortableEntry({
         fontSize: "0.8125rem",
       }}
     >
-      <span
-        {...attributes}
-        {...listeners}
-        style={DRAG_HANDLE_STYLE}
-        title="Drag to reorder"
-      >
+      <span {...dragHandleProps} style={DRAG_HANDLE_STYLE} title="Drag to reorder">
         ⋮⋮
       </span>
       <label
@@ -300,131 +299,116 @@ export default function PositionsWithEntriesTree({
     setExpanded((prev) => ({ ...prev, [positionId]: !prev[positionId] }));
   }, []);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor({ activationConstraint: { distance: 8 } })),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
+  const handleDragEnd = useCallback(
+    (result) => {
+      const { source, destination } = result;
+      if (!destination || source.index === destination.index) return;
 
-  const handlePositionDragEnd = useCallback(
-    (event) => {
-      const { active, over } = event;
-      if (!over || active.id === over.id) return;
-      const ids = positions.map((p) => `position-${p.id}`);
-      const oldIndex = ids.indexOf(active.id);
-      const newIndex = ids.indexOf(over.id);
-      if (oldIndex === -1 || newIndex === -1) return;
-      const reordered = arrayMove(ids, oldIndex, newIndex);
-      const positionIds = reordered.map((id) => id.replace("position-", ""));
-      onPositionReorder?.(positionIds);
+      if (source.droppableId === "positions") {
+        const reordered = [...positions];
+        const [removed] = reordered.splice(source.index, 1);
+        reordered.splice(destination.index, 0, removed);
+        onPositionReorder?.(reordered.map((p) => p.id));
+        return;
+      }
+
+      if (source.droppableId.startsWith("entries-")) {
+        const positionId = source.droppableId.replace("entries-", "");
+        const position = positions.find((p) => p.id === positionId);
+        if (!position) return;
+        const positionEntries = entries
+          .filter((e) => {
+            const fm = Object.fromEntries((e.fields || []).map((f) => [f.key, f.value]));
+            return fm.position_id === position.handle;
+          })
+          .sort((a, b) => {
+            const aOrder = parseInt(
+              (a.fields || []).find((f) => f.key === "sort_order")?.value || "0",
+              10
+            );
+            const bOrder = parseInt(
+              (b.fields || []).find((f) => f.key === "sort_order")?.value || "0",
+              10
+            );
+            if (aOrder !== bOrder) return aOrder - bOrder;
+            const aStart = (a.fields || []).find((f) => f.key === "start_at")?.value || "";
+            const bStart = (b.fields || []).find((f) => f.key === "start_at")?.value || "";
+            return aStart.localeCompare(bStart);
+          });
+        const reordered = [...positionEntries];
+        const [removed] = reordered.splice(source.index, 1);
+        reordered.splice(destination.index, 0, removed);
+        onEntryReorder?.(position.handle, reordered.map((e) => e.id));
+      }
     },
-    [positions, onPositionReorder]
+    [positions, entries, onPositionReorder, onEntryReorder]
   );
-
-  const handleEntryDragEnd = useCallback(
-    (event, positionHandle) => {
-      const { active, over } = event;
-      if (!over || active.id === over.id) return;
-      const positionEntries = entries.filter(
-        (e) => {
-          const fm = Object.fromEntries((e.fields || []).map((f) => [f.key, f.value]));
-          return fm.position_id === positionHandle;
-        }
-      );
-      const ids = positionEntries.map((e) => `entry-${e.id}`);
-      const oldIndex = ids.indexOf(active.id);
-      const newIndex = ids.indexOf(over.id);
-      if (oldIndex === -1 || newIndex === -1) return;
-      const reordered = arrayMove(ids, oldIndex, newIndex);
-      const entryIds = reordered.map((id) => id.replace("entry-", ""));
-      onEntryReorder?.(positionHandle, entryIds);
-    },
-    [entries, onEntryReorder]
-  );
-
-  const positionIds = positions.map((p) => `position-${p.id}`);
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragEnd={handlePositionDragEnd}
-    >
-      <SortableContext items={positionIds} strategy={verticalListSortingStrategy}>
-        {positions.map((position) => {
-          const positionEntries = entries
-            .filter((e) => {
-              const fm = Object.fromEntries((e.fields || []).map((f) => [f.key, f.value]));
-              return fm.position_id === position.handle;
-            })
-            .sort((a, b) => {
-              const aOrder = parseInt(
-                (a.fields || []).find((f) => f.key === "sort_order")?.value || "0",
-                10
-              );
-              const bOrder = parseInt(
-                (b.fields || []).find((f) => f.key === "sort_order")?.value || "0",
-                10
-              );
-              if (aOrder !== bOrder) return aOrder - bOrder;
-              const aStart = (a.fields || []).find((f) => f.key === "start_at")?.value || "";
-              const bStart = (b.fields || []).find((f) => f.key === "start_at")?.value || "";
-              return aStart.localeCompare(bStart);
-            });
+    <DragDropContext onDragEnd={handleDragEnd}>
+      <Droppable droppableId="positions">
+        {(provided) => (
+          <div style={{ minHeight: 50 }} ref={provided.innerRef} {...provided.droppableProps}>
+            {positions.map((position, idx) => {
+              const positionEntries = entries
+                .filter((e) => {
+                  const fm = Object.fromEntries((e.fields || []).map((f) => [f.key, f.value]));
+                  return fm.position_id === position.handle;
+                })
+                .sort((a, b) => {
+                  const aOrder = parseInt(
+                    (a.fields || []).find((f) => f.key === "sort_order")?.value || "0",
+                    10
+                  );
+                  const bOrder = parseInt(
+                    (b.fields || []).find((f) => f.key === "sort_order")?.value || "0",
+                    10
+                  );
+                  if (aOrder !== bOrder) return aOrder - bOrder;
+                  const aStart = (a.fields || []).find((f) => f.key === "start_at")?.value || "";
+                  const bStart = (b.fields || []).find((f) => f.key === "start_at")?.value || "";
+                  return aStart.localeCompare(bStart);
+                });
 
-          const entryIds = positionEntries.map((e) => `entry-${e.id}`);
-          const isExpanded = expanded[position.id] !== false;
+              const isExpanded = expanded[position.id] !== false;
 
-          return (
-            <SortablePosition
-              key={position.id}
-              position={position}
-              isExpanded={isExpanded}
-              onToggle={() => toggleExpanded(position.id)}
-              onEdit={onPositionEdit}
-              onDelete={onPositionDelete}
-              canEdit={!isDefaultPosition?.(position)}
-            >
-              {positionEntries.length > 0 ? (
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={(e) => handleEntryDragEnd(e, position.handle)}
+              return (
+                <Draggable
+                  key={position.id}
+                  draggableId={`position-${position.id}`}
+                  index={idx}
                 >
-                  <SortableContext
-                    items={entryIds}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <div style={{ marginTop: "0.25rem", marginBottom: "0.5rem" }}>
-                      {positionEntries.map((entry) => (
-                        <SortableEntry
-                          key={entry.id}
-                          entry={entry}
-                          blockTypes={blockTypes}
-                          storeTimeZone={storeTimeZone}
-                          onEdit={onEntryEdit}
-                          onDelete={onEntryDelete}
-                          onToggleStatus={onEntryToggleStatus}
-                        />
-                      ))}
+                  {(posProvided) => (
+                    <div
+                      ref={posProvided.innerRef}
+                      {...posProvided.draggableProps}
+                      style={posProvided.draggableProps.style}
+                    >
+                      <PositionRow
+                        position={position}
+                        isExpanded={isExpanded}
+                        onToggle={toggleExpanded}
+                        onEdit={onPositionEdit}
+                        onDelete={onPositionDelete}
+                        canEdit={!isDefaultPosition?.(position)}
+                        dragHandleProps={posProvided.dragHandleProps}
+                        positionEntries={positionEntries}
+                        blockTypes={blockTypes}
+                        storeTimeZone={storeTimeZone}
+                        onEntryReorder={onEntryReorder}
+                        onEntryEdit={onEntryEdit}
+                        onEntryDelete={onEntryDelete}
+                        onEntryToggleStatus={onEntryToggleStatus}
+                      />
                     </div>
-                  </SortableContext>
-                </DndContext>
-              ) : (
-                <div
-                  style={{
-                    marginLeft: "2rem",
-                    padding: "0.5rem",
-                    color: "#6d7175",
-                    fontSize: "0.8125rem",
-                  }}
-                >
-                  No entries in this position
-                </div>
-              )}
-            </SortablePosition>
-          );
-        })}
-      </SortableContext>
-    </DndContext>
+                  )}
+                </Draggable>
+              );
+            })}
+            {provided.placeholder}
+          </div>
+        )}
+      </Droppable>
+    </DragDropContext>
   );
 }
