@@ -18,6 +18,7 @@ function PositionRow({
   onToggle,
   onEdit,
   onDelete,
+  onAddEvent,
   canEdit,
   dragHandleProps,
   positionEntries,
@@ -72,6 +73,20 @@ function PositionRow({
         >
           {position.handle}
         </code>
+        <button
+          type="button"
+          onClick={() => onAddEvent?.(position)}
+          style={{
+            fontSize: "0.75rem",
+            color: "#6d7175",
+            cursor: "pointer",
+            background: "none",
+            border: "none",
+            fontWeight: 400,
+          }}
+        >
+          + Event
+        </button>
         {canEdit && (
           <>
             <button
@@ -147,7 +162,7 @@ function PositionRow({
               fontSize: "0.8125rem",
             }}
           >
-            No entries in this position
+            No events in this stream
           </div>
         ))}
     </div>
@@ -282,6 +297,7 @@ export default function PositionsWithEntriesTree({
   onEntryReorder,
   onPositionEdit,
   onPositionDelete,
+  onAddEvent,
   onEntryEdit,
   onEntryDelete,
   onEntryToggleStatus,
@@ -390,6 +406,7 @@ export default function PositionsWithEntriesTree({
                         onToggle={toggleExpanded}
                         onEdit={onPositionEdit}
                         onDelete={onPositionDelete}
+                        onAddEvent={onAddEvent}
                         canEdit={!isDefaultPosition?.(position)}
                         dragHandleProps={posProvided.dragHandleProps}
                         positionEntries={positionEntries}

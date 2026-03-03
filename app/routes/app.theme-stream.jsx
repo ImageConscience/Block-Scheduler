@@ -56,6 +56,7 @@ export default function ThemeStreamPage() {
   const defaultBlockType = loaderData?.defaultBlockType ?? "hero";
   const positions = loaderData?.positions ?? [];
   const [clientMounted, setClientMounted] = useState(false);
+  const [createFormStreamHandle, setCreateFormStreamHandle] = useState(null);
 
   useEffect(() => {
     setClientMounted(true);
@@ -202,6 +203,7 @@ export default function ThemeStreamPage() {
     setShowForm(false);
     setFormStatusActive(false);
     setFormBlockType(defaultBlockType);
+    setCreateFormStreamHandle(null);
     if (formRef.current) {
       formRef.current.reset();
     }
@@ -210,32 +212,12 @@ export default function ThemeStreamPage() {
   const isLoading = navigation.state === "submitting" || fetcher.state === "submitting";
 
   return (
-    <s-page heading="Theme Stream | Entries">
+    <s-page heading="Theme Stream | Events">
       {(loaderError || fetcher.data?.error) && (
         <s-banner tone="critical" title="Error">
           {loaderError || fetcher.data?.error}
         </s-banner>
       )}
-      <s-section>
-        <h2 style={{ fontSize: "1.2rem", lineHeight: 1.1, margin: "0 0 10px 0" }}>Create Entry</h2>
-        <button
-          type="button"
-          onClick={() => setShowForm(true)}
-          style={{
-            marginTop: "0.75rem",
-            padding: "0.5rem 0.75rem",
-            border: "none",
-            borderRadius: "4px",
-            background: "#008060",
-            color: "#fff",
-            cursor: "pointer",
-            fontSize: "0.875rem",
-            fontWeight: "600",
-          }}
-        >
-          New Entry
-        </button>
-      </s-section>
 
       {/* Modal Overlay */}
       {showForm && (
@@ -261,7 +243,7 @@ export default function ThemeStreamPage() {
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Create new entry"
+            aria-label="Create new event"
             tabIndex={-1}
             className={`create-modal-dialog${MODAL_LAYOUT === "stacked" ? " create-modal-stacked" : ""}`}
             style={{
@@ -289,7 +271,7 @@ export default function ThemeStreamPage() {
             `}</style>
             <div style={{ padding: "1.5rem", borderBottom: "1px solid #e1e3e5", flexShrink: 0 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: "600" }}>Create New Entry</h2>
+                <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: "600" }}>Create New Event</h2>
                 <button
                   type="button"
                   onClick={handleCloseForm}
@@ -384,17 +366,17 @@ export default function ThemeStreamPage() {
               label="Title"
               name="title"
               required
-              placeholder="Display title for this schedulable entry"
+              placeholder="Display title for this event"
             />
             <div style={{ marginBottom: "1rem" }}>
-              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Position <span style={{ color: "#d72c0d" }}>*</span></label>
+              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Stream <span style={{ color: "#d72c0d" }}>*</span></label>
               <select
                 name="position_id"
                 required
-                defaultValue="uncategorized"
+                defaultValue={createFormStreamHandle || "uncategorized"}
                 style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", fontSize: "0.875rem" }}
               >
-                <option value="">Select position...</option>
+                <option value="">Select stream...</option>
                 {positions.map((p) => (
                   <option key={p.id} value={p.handle}>
                     {p.name}{p.description ? ` — ${p.description}` : ""}
@@ -402,7 +384,7 @@ export default function ThemeStreamPage() {
                 ))}
               </select>
               {positions.length === 0 && (
-                <p style={{ margin: "0.25rem 0 0", fontSize: "0.75rem", color: "#6d7175" }}>No positions yet. Add one in the Positions section below.</p>
+                <p style={{ margin: "0.25rem 0 0", fontSize: "0.75rem", color: "#6d7175" }}>No streams yet. Add one below.</p>
               )}
             </div>
                   <p style={{ margin: "0 0 0.5rem 0", fontSize: "0.8125rem", color: "#6d7175" }}>
@@ -822,7 +804,7 @@ export default function ThemeStreamPage() {
                   </div>
                   <div style={{ marginBottom: "0.5rem" }}>
                     <p style={{ marginBottom: "0.5rem", fontWeight: "500", fontSize: "0.875rem" }}>
-                      Entry Status
+                      Event Status
                     </p>
                     <label
                       htmlFor={statusInputId}
@@ -869,7 +851,7 @@ export default function ThemeStreamPage() {
                             border: 0,
                           }}
                         >
-                          {formStatusActive ? "Set entry to draft" : "Set entry to active"}
+                          {formStatusActive ? "Set event to draft" : "Set event to active"}
                         </span>
                         <span
                           style={{
@@ -923,7 +905,7 @@ export default function ThemeStreamPage() {
                       Cancel
                     </button>
                     <s-button type="submit" disabled={isLoading} variant="primary">
-                      {isLoading ? "Creating..." : "Create Entry"}
+                      {isLoading ? "Creating..." : "Create Event"}
                     </s-button>
                   </div>
           </s-stack>
@@ -935,37 +917,57 @@ export default function ThemeStreamPage() {
       )}
 
       <s-section>
-        <h2 style={{ fontSize: "1.2rem", lineHeight: 1.1, margin: "0 0 10px 0" }}>Positions & Entries</h2>
+        <h2 style={{ fontSize: "1.2rem", lineHeight: 1.1, margin: "0 0 10px 0" }}>Streams & Events</h2>
         <p style={{ fontSize: "0.875rem", color: "#6d7175", margin: "0 0 1rem 0" }}>
-          Positions are placement slots for scheduled content. <strong>Uncategorized</strong> is the default bucket. Drag to reorder; expand/collapse to show entries. Both positions and entries support full CRUD.
+          Streams are placement slots for scheduled content. <strong>Uncategorized</strong> is the default bucket. Drag to reorder; expand/collapse to show events. Both streams and events support full CRUD.
         </p>
-        <button
-          type="button"
-          onClick={() => {
-            setPositionEditTarget(null);
-            setPositionFormName("");
-            setPositionFormDesc("");
-            setPositionModalOpen(true);
-          }}
-          style={{
-            marginBottom: "1rem",
-            padding: "0.5rem 0.75rem",
-            border: "1px solid #008060",
-            borderRadius: "4px",
-            background: "#008060",
-            color: "#fff",
-            cursor: "pointer",
-            fontSize: "0.875rem",
-            fontWeight: "600",
-          }}
-        >
-          Add Position
-        </button>
+        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem", flexWrap: "wrap" }}>
+          <button
+            type="button"
+            onClick={() => {
+              setCreateFormStreamHandle(null);
+              setShowForm(true);
+            }}
+            style={{
+              padding: "0.5rem 0.75rem",
+              border: "1px solid #008060",
+              borderRadius: "4px",
+              background: "#008060",
+              color: "#fff",
+              cursor: "pointer",
+              fontSize: "0.875rem",
+              fontWeight: "600",
+            }}
+          >
+            New Event
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setPositionEditTarget(null);
+              setPositionFormName("");
+              setPositionFormDesc("");
+              setPositionModalOpen(true);
+            }}
+            style={{
+              padding: "0.5rem 0.75rem",
+              border: "1px solid #008060",
+              borderRadius: "4px",
+              background: "#008060",
+              color: "#fff",
+              cursor: "pointer",
+              fontSize: "0.875rem",
+              fontWeight: "600",
+            }}
+          >
+            Add Stream
+          </button>
+        </div>
         {(positions.length === 0 && initialEntries.length === 0) ? (
-          <s-text>No positions or entries yet. Create a position above, then create entries above.</s-text>
+          <s-text>No streams or events yet. Add a stream above, then create events.</s-text>
         ) : !clientMounted ? (
           <div style={{ padding: "1rem", color: "#6d7175", fontSize: "0.875rem" }}>
-            Loading positions and entries…
+            Loading streams and events…
           </div>
         ) : (
           <PositionsWithEntriesTree
@@ -974,6 +976,10 @@ export default function ThemeStreamPage() {
             blockTypes={blockTypes}
             storeTimeZone={storeTimeZone}
             isDefaultPosition={(p) => p.handle === "uncategorized"}
+            onAddEvent={(position) => {
+              setCreateFormStreamHandle(position.handle);
+              setShowForm(true);
+            }}
             onPositionReorder={async (ids) => {
               try {
                 const res = await fetch(window.location.pathname, {
@@ -1075,7 +1081,7 @@ export default function ThemeStreamPage() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 style={{ margin: "0 0 1rem 0", fontSize: "1.125rem" }}>{positionEditTarget ? "Edit Position" : "Add Position"}</h3>
+            <h3 style={{ margin: "0 0 1rem 0", fontSize: "1.125rem" }}>{positionEditTarget ? "Edit Stream" : "Add Stream"}</h3>
             <div style={{ marginBottom: "1rem" }}>
               <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Name</label>
               <input
@@ -1137,7 +1143,7 @@ export default function ThemeStreamPage() {
                 }}
                 style={{ padding: "0.5rem 1rem", border: "none", borderRadius: "4px", background: "#008060", color: "white", cursor: "pointer", fontSize: "0.875rem", fontWeight: "600" }}
               >
-                {positionEditTarget ? "Save" : "Create"}
+                {positionEditTarget ? "Save" : "Add"}
               </button>
             </div>
           </div>
@@ -1173,9 +1179,9 @@ export default function ThemeStreamPage() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 style={{ margin: "0 0 0.5rem 0" }}>Delete position?</h3>
+            <h3 style={{ margin: "0 0 0.5rem 0" }}>Delete stream?</h3>
             <p style={{ margin: "0 0 1rem 0", color: "#6d7175", fontSize: "0.875rem" }}>
-              Delete &quot;{positionDeleteConfirm.name}&quot;? Entries using this position will need to be updated.
+              Delete &quot;{positionDeleteConfirm.name}&quot;? Events using this stream will need to be updated.
             </p>
             <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
               <button
@@ -1453,11 +1459,11 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
       if (result.success) {
         onSuccess();
       } else {
-        setError(result.error || "Failed to update entry");
+        setError(result.error || "Failed to update event");
         setIsSubmitting(false);
       }
     } catch (err) {
-      setError(err.message || "Failed to update entry");
+      setError(err.message || "Failed to update event");
       setIsSubmitting(false);
     }
   };
@@ -1484,7 +1490,7 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Edit entry"
+        aria-label="Edit event"
         tabIndex={-1}
             className={`edit-modal-dialog${MODAL_LAYOUT === "stacked" ? " edit-modal-stacked" : ""}`}
         style={{
@@ -1512,7 +1518,7 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
         `}</style>
         <div style={{ padding: "1.5rem", borderBottom: "1px solid #e1e3e5", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: "600" }}>Edit Entry</h2>
+            <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: "600" }}>Edit Event</h2>
             <button
               type="button"
               onClick={onClose}
@@ -1610,7 +1616,7 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
           </div>
           <div style={{ marginBottom: "1rem" }}>
             <label htmlFor={positionInputId} style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>
-              Position <span style={{ color: "#d72c0d" }}>*</span>
+              Stream <span style={{ color: "#d72c0d" }}>*</span>
             </label>
             <select
               id={positionInputId}
@@ -1619,7 +1625,7 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
               defaultValue={fieldMap.position_id || ""}
               style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }}
             >
-              <option value="">Select position...</option>
+              <option value="">Select stream...</option>
               {positions.map((p) => (
                 <option key={p.id} value={p.handle}>
                   {p.name}{p.description ? ` — ${p.description}` : ""}
@@ -2019,7 +2025,7 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
                 cursor: isSubmitting ? "not-allowed" : "pointer",
               }}
             >
-              {isSubmitting ? "Updating..." : "Update Entry"}
+              {isSubmitting ? "Updating..." : "Update Event"}
             </button>
           </div>
             </div>
@@ -2059,11 +2065,11 @@ function DeleteEntryModal({ entry, onClose, onSuccess }) {
       if (result.success) {
         onSuccess();
       } else {
-        setError(result.error || "Failed to delete entry");
+        setError(result.error || "Failed to delete event");
         setIsDeleting(false);
       }
     } catch (err) {
-      setError(err.message || "Failed to delete entry");
+      setError(err.message || "Failed to delete event");
       setIsDeleting(false);
     }
   };
@@ -2090,7 +2096,7 @@ function DeleteEntryModal({ entry, onClose, onSuccess }) {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Delete entry confirmation"
+        aria-label="Delete event confirmation"
         tabIndex={-1}
         style={{
           backgroundColor: "white",
@@ -2102,7 +2108,7 @@ function DeleteEntryModal({ entry, onClose, onSuccess }) {
       >
         <div style={{ padding: "1.5rem", borderBottom: "1px solid #e1e3e5" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: "600" }}>Delete Entry</h2>
+            <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: "600" }}>Delete Event</h2>
             <button
               type="button"
               onClick={onClose}
