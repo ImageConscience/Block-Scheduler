@@ -62,16 +62,6 @@ function PositionRow({
         <span style={{ flex: 1, fontWeight: 600, fontSize: "0.9375rem" }}>
           {position.name}
         </span>
-        <code
-          style={{
-            fontSize: "0.75rem",
-            backgroundColor: "#e1e3e5",
-            padding: "2px 6px",
-            borderRadius: "4px",
-          }}
-        >
-          {position.handle}
-        </code>
         {canEdit && (
           <>
             <button
@@ -224,15 +214,49 @@ function EntryRow({
           alignItems: "center",
           cursor: "pointer",
           minWidth: "44px",
-          height: "22px",
+          height: "24px",
+          position: "relative",
         }}
+        title={isActive ? "Active (published) – click to set draft" : "Draft – click to publish"}
       >
         <input
           type="checkbox"
           checked={isActive}
           onChange={() => onToggleStatus(entry, isActive)}
-          style={{ marginRight: "0.25rem" }}
+          style={{
+            opacity: 0,
+            width: 0,
+            height: 0,
+            position: "absolute",
+          }}
         />
+        <span
+          style={{
+            position: "absolute",
+            cursor: "pointer",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: isActive ? "#008060" : "#c9cccf",
+            borderRadius: "24px",
+            transition: "background-color 0.2s",
+          }}
+        >
+          <span
+            style={{
+              position: "absolute",
+              width: "18px",
+              height: "18px",
+              left: isActive ? "22px" : "3px",
+              bottom: "3px",
+              backgroundColor: "white",
+              borderRadius: "50%",
+              transition: "left 0.2s",
+              boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+            }}
+          />
+        </span>
       </label>
       {desktopBannerUrl && (
         <img
