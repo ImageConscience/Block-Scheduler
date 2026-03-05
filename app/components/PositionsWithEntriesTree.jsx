@@ -2,6 +2,18 @@ import { useState, useCallback } from "react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { formatUTCForDisplay } from "./ThemeStream/utils";
 
+/** Background colors for block type badges (avoid green #d4edda used for Active) */
+const BLOCK_TYPE_BG = {
+  hero: "#e3f2fd",
+  announcement_bar: "#fff3e0",
+  collection_banner: "#f3e5f5",
+  countdown_banner: "#e0f7fa",
+  image_with_text: "#e8eaf6",
+  background_video: "#fce4ec",
+  promo_card: "#e0f2f1",
+};
+const DEFAULT_BLOCK_TYPE_BG = "#f5f5f5";
+
 /** Position row (parent) - used inside Draggable */
 function PositionRow({
   position,
@@ -237,10 +249,29 @@ function EntryRow({
         />
       )}
       <span style={{ flex: 1, fontWeight: 500 }}>{fieldMap.title || "(untitled)"}</span>
-      <span style={{ color: "#6d7175", fontSize: "0.75rem" }}>
+      <span
+        style={{
+          color: "#4d5156",
+          fontSize: "0.75rem",
+          textAlign: "center",
+          minWidth: "7rem",
+          padding: "0.2rem 0.5rem",
+          borderRadius: "4px",
+          backgroundColor: BLOCK_TYPE_BG[fieldMap.block_type] ?? DEFAULT_BLOCK_TYPE_BG,
+        }}
+      >
         {blockTypes[fieldMap.block_type || "hero"]?.label || "Hero"}
       </span>
-      <span style={{ display: "flex", gap: "0.35rem", color: "#666", fontSize: "0.75rem" }}>
+      <span
+        style={{
+          display: "flex",
+          gap: "0.35rem",
+          color: "#666",
+          fontSize: "0.75rem",
+          marginLeft: "1rem",
+          marginRight: "1rem",
+        }}
+      >
         <span>{startDate}</span>
         <span>{endDate}</span>
       </span>
