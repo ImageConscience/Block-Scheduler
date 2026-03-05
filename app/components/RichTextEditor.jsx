@@ -11,20 +11,22 @@ export default function RichTextEditor({ name, value = "", placeholder, onChange
   const hiddenRef = useRef(null);
   const isInternalChange = useRef(false);
 
+  const lastSyncedValueRef = useRef(undefined);
   useEffect(() => {
     const el = editorRef.current;
     const hidden = hiddenRef.current;
     if (!el || isInternalChange.current) return;
     const normalized = (value || "").trim();
-    const current = el.innerHTML.trim();
-    if (normalized && current !== normalized) {
-      el.innerHTML = normalized;
-      if (hidden) hidden.value = normalized;
-    } else if (!normalized && current !== "" && current !== "<br>") {
-      el.innerHTML = "";
-      if (hidden) hidden.value = "";
-    } else if (hidden && hidden.value !== (value || "")) {
-      hidden.value = value || "";
+    const lastSynced = lastSyncedValueRef.current;
+    if (lastSynced === undefined || lastSynced !== value) {
+      lastSyncedValueRef.current = value;
+      if (normalized) {
+        el.innerHTML = normalized;
+        if (hidden) hidden.value = normalized;
+      } else {
+        el.innerHTML = "";
+        if (hidden) hidden.value = "";
+      }
     }
   }, [value]);
 
@@ -38,8 +40,8 @@ export default function RichTextEditor({ name, value = "", placeholder, onChange
         hidden.value = el.innerHTML;
       }
     };
-    form.addEventListener("submit", syncBeforeSubmit);
-    return () => form.removeEventListener("submit", syncBeforeSubmit);
+    form.addEventListener("submit", syncBeforeSubmit, true);
+    return () => form.removeEventListener("submit", syncBeforeSubmit, true);
   }, []);
 
   const handleInput = () => {
