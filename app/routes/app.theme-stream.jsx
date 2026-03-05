@@ -29,6 +29,9 @@ export default function ThemeStreamPage() {
   const mediaFiles = loaderMediaFiles;
   const loaderError = loaderData?.error ?? null;
   const redirectUrl = loaderData?.redirectUrl ?? null;
+  const needsPlanSelection = loaderData?.needsPlanSelection === true;
+  const shopifyPlus = loaderData?.shopifyPlus === true;
+  const billingPlan = loaderData?.billingPlan ?? null;
   const storeTimeZone = loaderData?.storeTimeZone ?? "UTC";
   const fetcher = useFetcher();
   const shopify = useAppBridge();
@@ -211,6 +214,147 @@ export default function ThemeStreamPage() {
   };
 
   const isLoading = navigation.state === "submitting" || fetcher.state === "submitting";
+
+  const planFetcher = useFetcher();
+
+  useEffect(() => {
+    if (planFetcher.data?.redirectUrl) {
+      performRedirect(planFetcher.data.redirectUrl, "plan-selection");
+    }
+  }, [planFetcher.data?.redirectUrl, performRedirect]);
+
+  if (needsPlanSelection) {
+    return (
+      <s-page heading="Theme Stream | Choose Your Plan">
+        <div style={{ maxWidth: 600, margin: "2rem auto", padding: "0 1rem" }}>
+          <h2 style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>Choose your plan</h2>
+          <p style={{ color: "#6d7175", marginBottom: "1.5rem" }}>
+            Select a plan to get started with Theme Stream.
+          </p>
+          {planFetcher.data?.error && (
+            <s-banner tone="critical" title="Error" style={{ marginBottom: "1rem" }}>
+              {planFetcher.data.error}
+            </s-banner>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            {shopifyPlus ? (
+              <div
+                style={{
+                  border: "2px solid #667eea",
+                  borderRadius: "8px",
+                  padding: "1.5rem",
+                  backgroundColor: "#f8f9ff",
+                }}
+              >
+                <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "1.125rem" }}>Streamer Plus</h3>
+                <p style={{ margin: "0 0 1rem 0", color: "#6d7175", fontSize: "0.875rem" }}>
+                  For Shopify Plus stores. Unlimited streams, unlimited events.
+                </p>
+                <p style={{ margin: "0 0 1rem 0", fontSize: "1.25rem", fontWeight: 600 }}>$49/month</p>
+                <button
+                  type="button"
+                  disabled={planFetcher.state === "submitting"}
+                  onClick={() => {
+                    planFetcher.submit(
+                      { intent: "createSubscription", planKey: "streamer_plus" },
+                      { method: "POST", encType: "application/json" },
+                    );
+                  }}
+                  style={{
+                    padding: "0.5rem 1.5rem",
+                    backgroundColor: "#667eea",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontWeight: 600,
+                    cursor: planFetcher.state === "submitting" ? "wait" : "pointer",
+                  }}
+                >
+                  {planFetcher.state === "submitting" ? "Loading…" : "Get Streamer Plus"}
+                </button>
+              </div>
+            ) : (
+              <>
+                <div
+                  style={{
+                    border: "1px solid #e1e3e5",
+                    borderRadius: "8px",
+                    padding: "1.5rem",
+                    backgroundColor: "#fff",
+                  }}
+                >
+                  <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "1.125rem" }}>Starter</h3>
+                  <p style={{ margin: "0 0 1rem 0", color: "#6d7175", fontSize: "0.875rem" }}>
+                    Up to 3 streams. Unlimited events and block placements.
+                  </p>
+                  <p style={{ margin: "0 0 1rem 0", fontSize: "1.25rem", fontWeight: 600 }}>$9/month</p>
+                  <button
+                    type="button"
+                    disabled={planFetcher.state === "submitting"}
+                    onClick={() => {
+                      planFetcher.submit(
+                        { intent: "createSubscription", planKey: "starter" },
+                        { method: "POST", encType: "application/json" },
+                      );
+                    }}
+                    style={{
+                      padding: "0.5rem 1.5rem",
+                      backgroundColor: "#667eea",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "6px",
+                      fontWeight: 600,
+                      cursor: planFetcher.state === "submitting" ? "wait" : "pointer",
+                    }}
+                  >
+                    {planFetcher.state === "submitting" ? "Loading…" : "Get Starter"}
+                  </button>
+                </div>
+                <div
+                  style={{
+                    border: "2px solid #667eea",
+                    borderRadius: "8px",
+                    padding: "1.5rem",
+                    backgroundColor: "#f8f9ff",
+                  }}
+                >
+                  <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "1.125rem" }}>Streamer</h3>
+                  <p style={{ margin: "0 0 1rem 0", color: "#6d7175", fontSize: "0.875rem" }}>
+                    Unlimited streams. For Shopify Standard stores.
+                  </p>
+                  <p style={{ margin: "0 0 1rem 0", fontSize: "1.25rem", fontWeight: 600 }}>$29/month</p>
+                  <button
+                    type="button"
+                    disabled={planFetcher.state === "submitting"}
+                    onClick={() => {
+                      planFetcher.submit(
+                        { intent: "createSubscription", planKey: "streamer" },
+                        { method: "POST", encType: "application/json" },
+                      );
+                    }}
+                    style={{
+                      padding: "0.5rem 1.5rem",
+                      backgroundColor: "#667eea",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "6px",
+                      fontWeight: 600,
+                      cursor: planFetcher.state === "submitting" ? "wait" : "pointer",
+                    }}
+                  >
+                    {planFetcher.state === "submitting" ? "Loading…" : "Get Streamer"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+          <p style={{ marginTop: "1.5rem", fontSize: "0.75rem", color: "#6d7175" }}>
+            All plans include a 7-day free trial. You can cancel anytime.
+          </p>
+        </div>
+      </s-page>
+    );
+  }
 
   return (
     <s-page heading="Theme Stream | Events">
@@ -740,8 +884,16 @@ export default function ThemeStreamPage() {
                           <input type="color" name="description_color" defaultValue="#ffffff" style={{ width: "100%", height: "36px", border: "1px solid #c9cccf", borderRadius: "4px" }} />
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Alignment</label>
-                          <select name="text_alignment" style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px" }}>
+                          <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Alignment (desktop)</label>
+                          <select name="text_alignment_desktop" style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px" }}>
+                            <option value="left">Left</option>
+                            <option value="center">Center</option>
+                            <option value="right">Right</option>
+                          </select>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Alignment (mobile)</label>
+                          <select name="text_alignment_mobile" style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px" }}>
                             <option value="left">Left</option>
                             <option value="center">Center</option>
                             <option value="right">Right</option>
@@ -1057,28 +1209,34 @@ export default function ThemeStreamPage() {
           />
         )}
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setPositionEditTarget(null);
-            setPositionFormName("");
-            setPositionFormDesc("");
-            setPositionModalOpen(true);
-          }}
-          style={{
-            marginTop: "1rem",
-            padding: "0.5rem 0.75rem",
-            border: "1px solid #c9cccf",
-            borderRadius: "4px",
-            background: "white",
-            color: "#202223",
-            cursor: "pointer",
-            fontSize: "0.875rem",
-            fontWeight: "500",
-          }}
-        >
-          Add Stream
-        </button>
+        {billingPlan === "starter" && positions.length >= 3 ? (
+          <div style={{ marginTop: "1rem", padding: "0.5rem 0.75rem", fontSize: "0.8125rem", color: "#6d7175" }}>
+            Starter plan allows up to 3 streams. Upgrade to Streamer in your Shopify billing settings for unlimited streams.
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setPositionEditTarget(null);
+              setPositionFormName("");
+              setPositionFormDesc("");
+              setPositionModalOpen(true);
+            }}
+            style={{
+              marginTop: "1rem",
+              padding: "0.5rem 0.75rem",
+              border: "1px solid #c9cccf",
+              borderRadius: "4px",
+              background: "white",
+              color: "#202223",
+              cursor: "pointer",
+              fontSize: "0.875rem",
+              fontWeight: "500",
+            }}
+          >
+            Add Stream
+          </button>
+        )}
       </s-section>
 
       <p style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "#6d7175" }}>
@@ -1388,6 +1546,8 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
       buttonBgColorBelow: formData.get("button_bg_color_below") || null,
       buttonTextColorBelow: formData.get("button_text_color_below") || null,
       textAlignment: formData.get("text_alignment") || null,
+      textAlignmentDesktop: formData.get("text_alignment_desktop") || null,
+      textAlignmentMobile: formData.get("text_alignment_mobile") || null,
       verticalAlignment: formData.get("vertical_alignment") || null,
       mobileContentBelow: formData.get("mobile_content_below") === "on" || formData.get("mobile_content_below") === "true",
       overlayOpacity: formData.get("overlay_opacity") != null && formData.get("overlay_opacity") !== "" ? formData.get("overlay_opacity") : null,
@@ -1996,8 +2156,16 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
                     <input type="color" name="description_color" defaultValue={typeConfig.description_color || "#ffffff"} style={{ width: "100%", height: "36px", border: "1px solid #c9cccf", borderRadius: "4px" }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Alignment</label>
-                    <select name="text_alignment" defaultValue={typeConfig.text_alignment || "left"} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px" }}>
+                    <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Alignment (desktop)</label>
+                    <select name="text_alignment_desktop" defaultValue={typeConfig.text_alignment_desktop || typeConfig.text_alignment || "left"} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px" }}>
+                      <option value="left">Left</option>
+                      <option value="center">Center</option>
+                      <option value="right">Right</option>
+                    </select>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Alignment (mobile)</label>
+                    <select name="text_alignment_mobile" defaultValue={typeConfig.text_alignment_mobile || typeConfig.text_alignment || "left"} style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px" }}>
                       <option value="left">Left</option>
                       <option value="center">Center</option>
                       <option value="right">Right</option>

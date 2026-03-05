@@ -44,7 +44,9 @@ export default function BlockPreview({ blockType, data = {}, mediaFiles = [], vi
   const descSize = data.description_font_size != null && data.description_font_size !== "" ? `${Number(data.description_font_size)}em` : "0.8rem";
   const headColor = data.headline_color || "#ffffff";
   const descColor = data.description_color || "rgba(255,255,255,0.9)";
-  const textAlign = data.text_alignment || "left";
+  const textAlignDesktop = data.text_alignment_desktop || data.text_alignment || "left";
+  const textAlignMobile = data.text_alignment_mobile || data.text_alignment || "left";
+  const textAlign = viewport === "mobile" ? textAlignMobile : textAlignDesktop;
   const verticalAlign = data.vertical_alignment || "bottom";
   const justifyContentMap = { top: "flex-start", center: "center", bottom: "flex-end" };
   const overlayJustify = justifyContentMap[verticalAlign] || "flex-end";

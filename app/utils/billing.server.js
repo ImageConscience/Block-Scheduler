@@ -1,18 +1,39 @@
 const BILLING_ENABLED = process.env.BILLING_ENABLED !== "false";
-const PLAN_NAME = process.env.BILLING_PLAN_NAME || "Theme Stream Pro";
-const RAW_AMOUNT = process.env.BILLING_PRICE ?? "9.99";
-const AMOUNT = Number.parseFloat(RAW_AMOUNT);
 const CURRENCY_CODE = (process.env.BILLING_CURRENCY || "USD").toUpperCase();
 const INTERVAL = (process.env.BILLING_INTERVAL || "EVERY_30_DAYS").toUpperCase();
 const TRIAL_DAYS = Number.parseInt(process.env.BILLING_TRIAL_DAYS ?? "7", 10);
 const TEST_MODE = process.env.BILLING_TEST === "true" || process.env.NODE_ENV !== "production";
 const APP_BASE_URL = process.env.BILLING_RETURN_URL || process.env.SHOPIFY_APP_URL;
 
+/** Plan keys: starter (Standard only), streamer (Standard only), streamer_plus (Plus only) */
+const PLAN_CONFIG = {
+  starter: {
+    name: process.env.BILLING_PLAN_STARTER_NAME || "Starter",
+    price: Number.parseFloat(process.env.BILLING_PRICE_STARTER ?? "9"),
+    forShopifyPlus: false,
+    maxStreams: 3,
+  },
+  streamer: {
+    name: process.env.BILLING_PLAN_STREAMER_NAME || "Streamer",
+    price: Number.parseFloat(process.env.BILLING_PRICE_STREAMER ?? "29"),
+    forShopifyPlus: false,
+    maxStreams: null,
+  },
+  streamer_plus: {
+    name: process.env.BILLING_PLAN_STREAMER_PLUS_NAME || "Streamer Plus",
+    price: Number.parseFloat(process.env.BILLING_PRICE_STREAMER_PLUS ?? "49"),
+    forShopifyPlus: true,
+    maxStreams: null,
+  },
+};
+
 const SHOP_PLAN_QUERY = `#graphql
   query GetShopPlan {
     shop {
       plan {
         partnerDevelopment
+        shopifyPlus
+        publicDisplayName
       }
     }
   }
@@ -82,13 +103,16 @@ const CREATE_SUBSCRIPTION_MUTATION = `#graphql
   }
 `;
 
+const VALID_PLAN_KEYS = ["starter", "streamer", "streamer_plus"];
 const isBillingConfigured =
   BILLING_ENABLED &&
-  Number.isFinite(AMOUNT) &&
-  AMOUNT > 0 &&
-  typeof PLAN_NAME === "string" &&
-  PLAN_NAME.length > 0 &&
-  APP_BASE_URL;
+  APP_BASE_URL &&
+  VALID_PLAN_KEYS.every(
+    (k) =>
+      PLAN_CONFIG[k].price > 0 &&
+      typeof PLAN_CONFIG[k].name === "string" &&
+      PLAN_CONFIG[k].name.length > 0,
+  );
 
 const APP_BRIDGE_REDIRECT_HEADER = "X-Shopify-App-Bridge-Redirect";
 const APP_BRIDGE_REDIRECT_URL_HEADER = "X-Shopify-App-Bridge-Redirect-Url";
@@ -105,28 +129,122 @@ export function createAppBridgeRedirect(confirmationUrl) {
   });
 }
 
-export async function ensureActiveSubscription(admin, request) {
-  console.log("[billing] ensureActiveSubscription called");
+/** Returns plan config for a given key */
+export function getPlanConfig(planKey) {
+  return PLAN_CONFIG[planKey] ?? null;
+}
+
+/** Check subscription status and shop type. Returns { hasActive, plan, shopifyPlus, partnerDevelopment } */
+export async function checkSubscriptionStatus(admin) {
+  const result = { hasActive: false, plan: null, shopifyPlus: false, partnerDevelopment: false };
+
   if (!isBillingConfigured) {
     if (BILLING_ENABLED) {
-      console.warn(
-        "[billing] Billing is enabled but configuration is incomplete. Skipping billing enforcement.",
-      );
+      console.warn("[billing] Billing enabled but config incomplete. Skipping check.");
     }
-    return null;
+    result.hasActive = true;
+    return result;
   }
 
   try {
     const planResponse = await admin.graphql(SHOP_PLAN_QUERY);
     const planJson = await planResponse.json();
-    const partnerDevelopment =
-      planJson?.data?.shop?.plan?.partnerDevelopment ?? false;
-    if (partnerDevelopment) {
-      console.log("[billing] Development store detected (partnerDevelopment=true); skipping billing.");
-      return null;
+    const shopPlan = planJson?.data?.shop?.plan ?? {};
+    result.partnerDevelopment = shopPlan.partnerDevelopment ?? false;
+    result.shopifyPlus = shopPlan.shopifyPlus ?? false;
+
+    if (result.partnerDevelopment) {
+      console.log("[billing] Development store; skipping billing.");
+      result.hasActive = true;
+      return result;
     }
   } catch (planError) {
-    console.warn("[billing] Could not check shop plan, proceeding with billing:", planError?.message);
+    console.warn("[billing] Could not check shop plan:", planError?.message);
+  }
+
+  try {
+    const response = await admin.graphql(CHECK_SUBSCRIPTION_QUERY);
+    const json = await response.json();
+
+    if (json?.errors?.length) {
+      const message = json.errors.map((e) => e.message).join(", ");
+      throw new Error(`[billing] Failed to check subscriptions: ${message}`);
+    }
+
+    const activeSubscriptions =
+      json?.data?.currentAppInstallation?.activeSubscriptions?.filter(Boolean) ?? [];
+
+    for (const sub of activeSubscriptions) {
+      if (sub.status !== "ACTIVE") continue;
+      const name = (sub.name || "").trim();
+      for (const [key, config] of Object.entries(PLAN_CONFIG)) {
+        if (name === config.name) {
+          const price = sub.lineItems?.[0]?.plan?.pricingDetails?.price;
+          if (price) {
+            const amountMatch = Number.parseFloat(price.amount) === config.price;
+            const currencyMatch = price.currencyCode === CURRENCY_CODE;
+            if (!amountMatch || !currencyMatch) continue;
+          }
+          result.hasActive = true;
+          result.plan = key;
+          return result;
+        }
+      }
+    }
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.includes("Apps without a public distribution cannot use the Billing API")
+    ) {
+      console.warn("[billing] App not public yet; skipping billing.");
+      result.hasActive = true;
+      return result;
+    }
+    console.error("[billing] Error checking subscription:", error);
+    throw error;
+  }
+
+  return result;
+}
+
+/** Create a subscription for the given plan key. Returns confirmation URL or null. */
+export async function createSubscriptionForPlan(admin, request, planKey) {
+  if (!VALID_PLAN_KEYS.includes(planKey)) {
+    throw new Error(`[billing] Invalid plan key: ${planKey}`);
+  }
+
+  if (!isBillingConfigured) {
+    if (BILLING_ENABLED) {
+      console.warn("[billing] Config incomplete; cannot create subscription.");
+    }
+    return null;
+  }
+
+  const config = PLAN_CONFIG[planKey];
+  if (!config || config.price <= 0) {
+    throw new Error(`[billing] Invalid plan config for: ${planKey}`);
+  }
+
+  try {
+    const planResponse = await admin.graphql(SHOP_PLAN_QUERY);
+    const planJson = await planResponse.json();
+    const shopifyPlus = planJson?.data?.shop?.plan?.shopifyPlus ?? false;
+    const partnerDevelopment = planJson?.data?.shop?.plan?.partnerDevelopment ?? false;
+
+    if (partnerDevelopment) {
+      console.log("[billing] Development store; skipping subscription creation.");
+      return null;
+    }
+
+    if (planKey === "streamer_plus" && !shopifyPlus) {
+      throw new Error("[billing] Streamer Plus is only available for Shopify Plus stores.");
+    }
+    if ((planKey === "starter" || planKey === "streamer") && shopifyPlus) {
+      throw new Error("[billing] Starter and Streamer are for Shopify Standard only. Please choose Streamer Plus.");
+    }
+  } catch (planError) {
+    if (planError.message?.startsWith("[billing]")) throw planError;
+    console.warn("[billing] Could not verify shop plan:", planError?.message);
   }
 
   const url = new URL(request.url);
@@ -139,69 +257,15 @@ export async function ensureActiveSubscription(admin, request) {
     undefined;
 
   const returnUrl = new URL("/app/theme-stream", APP_BASE_URL);
-  if (hostParam) {
-    returnUrl.searchParams.set("host", hostParam);
-  }
-  if (shopParam) {
-    returnUrl.searchParams.set("shop", shopParam);
-  }
-
-  try {
-    const response = await admin.graphql(CHECK_SUBSCRIPTION_QUERY);
-    const json = await response.json();
-
-    console.log(
-      "[billing] Active subscription check result:",
-      JSON.stringify(json?.data?.currentAppInstallation?.activeSubscriptions || [], null, 2),
-    );
-
-    if (json?.errors?.length) {
-      const message = json.errors.map((error) => error.message).join(", ");
-      throw new Error(`[billing] Failed to check active subscriptions: ${message}`);
-    }
-
-    const activeSubscriptions =
-      json?.data?.currentAppInstallation?.activeSubscriptions?.filter(Boolean) ?? [];
-
-    const hasActive = activeSubscriptions.some((subscription) => {
-      if (subscription.name !== PLAN_NAME) {
-        return false;
-      }
-      if (subscription.status !== "ACTIVE") {
-        return false;
-      }
-      const pricingDetails =
-        subscription.lineItems?.[0]?.plan?.pricingDetails?.price ?? null;
-      if (!pricingDetails) {
-        return true;
-      }
-
-      const amountMatches = Number.parseFloat(pricingDetails.amount) === AMOUNT;
-      const currencyMatches = pricingDetails.currencyCode === CURRENCY_CODE;
-      return amountMatches && currencyMatches;
-    });
-
-    if (hasActive) {
-      return null;
-    }
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message.includes("Apps without a public distribution cannot use the Billing API")
-    ) {
-      console.warn("[billing] App is not public yet; disabling billing enforcement.");
-      return null;
-    }
-    console.error("[billing] Error while checking subscription:", error);
-    throw error;
-  }
+  if (hostParam) returnUrl.searchParams.set("host", hostParam);
+  if (shopParam) returnUrl.searchParams.set("shop", shopParam);
 
   try {
     const creationResponse = await admin.graphql(CREATE_SUBSCRIPTION_MUTATION, {
       variables: {
-        name: PLAN_NAME,
+        name: config.name,
         trialDays: Number.isFinite(TRIAL_DAYS) && TRIAL_DAYS > 0 ? TRIAL_DAYS : null,
-        amount: AMOUNT.toFixed(2),
+        amount: config.price.toFixed(2),
         currencyCode: CURRENCY_CODE,
         interval: INTERVAL,
         returnUrl: returnUrl.toString(),
@@ -209,43 +273,38 @@ export async function ensureActiveSubscription(admin, request) {
       },
     });
     const creationJson = await creationResponse.json();
-    console.log("[billing] Subscription creation response:", JSON.stringify(creationJson, null, 2));
 
     if (creationJson?.errors?.length) {
-      const message = creationJson.errors.map((error) => error.message).join(", ");
+      const message = creationJson.errors.map((e) => e.message).join(", ");
       throw new Error(`[billing] Failed to create subscription: ${message}`);
     }
 
     const userErrors =
       creationJson?.data?.appSubscriptionCreate?.userErrors?.filter(Boolean) ?? [];
     if (userErrors.length > 0) {
-      const message = userErrors.map((error) => error.message).join(", ");
-      if (
-        message.includes("Apps without a public distribution cannot use the Billing API")
-      ) {
-        console.warn("[billing] App is not yet public; skipping billing enforcement.");
+      const message = userErrors.map((e) => e.message).join(", ");
+      if (message.includes("Apps without a public distribution cannot use the Billing API")) {
+        console.warn("[billing] App not public yet; skipping.");
         return null;
       }
-      throw new Error(`[billing] Subscription creation returned user errors: ${message}`);
+      throw new Error(`[billing] Subscription creation errors: ${message}`);
     }
 
     const confirmationUrl = creationJson?.data?.appSubscriptionCreate?.confirmationUrl;
     if (!confirmationUrl) {
-      throw new Error("[billing] Missing confirmation URL from appSubscriptionCreate.");
+      throw new Error("[billing] Missing confirmation URL.");
     }
 
-    console.log("[billing] Returning confirmation URL:", confirmationUrl);
+    console.log("[billing] Created subscription for", planKey, "->", confirmationUrl);
     return confirmationUrl;
   } catch (error) {
-    console.error("[billing] Error while creating subscription:", error);
     if (
       error instanceof Error &&
       error.message.includes("Apps without a public distribution cannot use the Billing API")
     ) {
-      console.warn("[billing] App is not public yet; skipping billing enforcement.");
+      console.warn("[billing] App not public yet; skipping.");
       return null;
     }
     throw error;
   }
 }
-

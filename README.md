@@ -143,9 +143,14 @@ When you reach the step for [setting up environment variables](https://shopify.d
 - `SHOPIFY_API_SECRET` = your Shopify app Client Secret
 - `SHOPIFY_APP_URL` = your Railway HTTPS URL (e.g., `https://theme-stream-production.up.railway.app`)
 - `SCOPES` = `read_metaobject_definitions,write_metaobject_definitions,read_metaobjects,write_metaobjects,write_products,unauthenticated_read_metaobjects,read_files,write_files,read_content,write_content`
-- `BILLING_PLAN_NAME` = Plan label shown to merchants (e.g., `Theme Stream Pro`)
-- `BILLING_PRICE` = Recurring price to charge (e.g., `14.99`)
+- `BILLING_PLAN_STARTER_NAME` = Plan label for Starter (default: `Starter`)
+- `BILLING_PRICE_STARTER` = Starter price in USD (default: `9`) — Shopify Standard only, up to 3 streams
+- `BILLING_PLAN_STREAMER_NAME` = Plan label for Streamer (default: `Streamer`)
+- `BILLING_PRICE_STREAMER` = Streamer price in USD (default: `29`) — Shopify Standard only, unlimited streams
+- `BILLING_PLAN_STREAMER_PLUS_NAME` = Plan label for Streamer Plus (default: `Streamer Plus`)
+- `BILLING_PRICE_STREAMER_PLUS` = Streamer Plus price in USD (default: `49`) — Shopify Plus only, unlimited streams
 - `BILLING_CURRENCY` = ISO currency code for billing (e.g., `USD`)
+- `BILLING_INTERVAL` = Billing interval (default: `EVERY_30_DAYS`)
 - `BILLING_TRIAL_DAYS` = Number of trial days (set to `7` for a one-week trial)
 - `BILLING_TEST` = `false` in production (`true` on development stores to avoid real charges)
 - `DATABASE_URL` = Railway Postgres connection URL

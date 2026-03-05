@@ -1,6 +1,6 @@
 import { Buffer } from "buffer";
 import { authenticate } from "../shopify.server";
-import { ensureActiveSubscription } from "../utils/billing.server";
+import { checkSubscriptionStatus, createSubscriptionForPlan } from "../utils/billing.server";
 import { parseLocalDateTimeToUTC, getDefaultDateBounds } from "../utils/datetime";
 import { json } from "../utils/responses.server";
 import { logger } from "../utils/logger.server";
@@ -148,9 +148,12 @@ export const loader = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
   const shop = session?.shop;
 
-  const confirmationUrl = await ensureActiveSubscription(admin, request);
-  if (confirmationUrl) {
-    return json({ redirectUrl: confirmationUrl });
+  const billingStatus = await checkSubscriptionStatus(admin);
+  if (!billingStatus.hasActive) {
+    return json({
+      needsPlanSelection: true,
+      shopifyPlus: billingStatus.shopifyPlus,
+    });
   }
 
   try {
@@ -191,6 +194,7 @@ export const loader = async ({ request }) => {
       blockTypes: BLOCK_TYPES,
       defaultBlockType: DEFAULT_BLOCK_TYPE,
       positions: [],
+      billingPlan: billingStatus.plan,
       error: "Metaobject definition not found. Please ensure the app has been properly installed.",
     };
       }
@@ -252,6 +256,7 @@ export const loader = async ({ request }) => {
       blockTypes: BLOCK_TYPES,
       defaultBlockType: DEFAULT_BLOCK_TYPE,
       positions,
+      billingPlan: billingStatus.plan,
     };
   } catch (error) {
     logger.error("Error loading schedulable entities:", error);
@@ -263,6 +268,7 @@ export const loader = async ({ request }) => {
       blockTypes: BLOCK_TYPES,
       defaultBlockType: DEFAULT_BLOCK_TYPE,
       positions: [],
+      billingPlan: null,
       error: `Failed to load entries: ${error.message}`,
     };
   }
@@ -277,21 +283,42 @@ export const action = async ({ request }) => {
     logger.debug("[ACTION] Accept header:", request.headers.get("accept"));
     logger.debug("[ACTION] X-Requested-With:", request.headers.get("x-requested-with"));
 
-    const { admin } = await authenticate.admin(request);
+    const { admin, session } = await authenticate.admin(request);
+    const shop = session?.shop;
 
-    const confirmationUrl = await ensureActiveSubscription(admin, request);
-    if (confirmationUrl) {
-      return json({ redirectUrl: confirmationUrl });
-    }
-
+    const contentType = request.headers.get("content-type") || "";
     const acceptHeader = request.headers.get("accept") || "";
     const isFetcherRequest =
       acceptHeader.includes("*/*") || acceptHeader.includes("application/json") || !acceptHeader.includes("text/html");
     logger.debug("[ACTION] Is fetcher request:", isFetcherRequest);
 
-    const contentType = request.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
       const body = await request.json();
+
+      if (body.intent === "createSubscription") {
+        const planKey = body.planKey;
+        if (!["starter", "streamer", "streamer_plus"].includes(planKey)) {
+          return json({ error: "Invalid plan", success: false });
+        }
+        try {
+          const confirmationUrl = await createSubscriptionForPlan(admin, request, planKey);
+          if (confirmationUrl) {
+            return json({ redirectUrl: confirmationUrl });
+          }
+          return json({ error: "Could not create subscription", success: false });
+        } catch (err) {
+          logger.error("[ACTION] createSubscription error:", err);
+          return json({ error: err.message || "Failed to create subscription", success: false });
+        }
+      }
+
+      const billingStatus = await checkSubscriptionStatus(admin);
+      if (!billingStatus.hasActive) {
+        return json({
+          needsPlanSelection: true,
+          shopifyPlus: billingStatus.shopifyPlus,
+        });
+      }
 
       if (body.intent === "delete") {
         logger.debug("[ACTION] Processing delete request for entry:", body.id);
@@ -414,6 +441,8 @@ export const action = async ({ request }) => {
           button_bg_color_below: body.buttonBgColorBelow || null,
           button_text_color_below: body.buttonTextColorBelow || null,
           text_alignment: body.textAlignment || null,
+          text_alignment_desktop: body.textAlignmentDesktop || null,
+          text_alignment_mobile: body.textAlignmentMobile || null,
           vertical_alignment: body.verticalAlignment || null,
           mobile_content_below: body.mobileContentBelow === true || body.mobileContentBelow === "true",
           // Overlay (0 = off, 1-100 = opacity %)
@@ -606,9 +635,17 @@ export const action = async ({ request }) => {
       }
 
       if (body.intent === "positionCreate") {
-        const { admin, session } = await authenticate.admin(request);
-        const shop = session?.shop;
         if (!shop) return json({ error: "Invalid session", success: false });
+        if (billingStatus.plan === "starter") {
+          const { listPositions } = await import("./positions.server.js");
+          const positions = await listPositions(shop);
+          if (positions.length >= 3) {
+            return json({
+              error: "Starter plan allows up to 3 streams. Upgrade to Streamer for unlimited streams.",
+              success: false,
+            });
+          }
+        }
         const { createPosition } = await import("./positions.server.js");
         const name = (body.name || "").trim();
         if (!name) return json({ error: "Position name is required", success: false });
@@ -690,6 +727,14 @@ export const action = async ({ request }) => {
         }
         return json({ success: true, message: "Entries reordered!" });
       }
+    }
+
+    const formBillingStatus = await checkSubscriptionStatus(admin);
+    if (!formBillingStatus.hasActive) {
+      return json({
+        needsPlanSelection: true,
+        shopifyPlus: formBillingStatus.shopifyPlus,
+      });
     }
 
     const formData = await request.formData();
@@ -1148,6 +1193,8 @@ export const action = async ({ request }) => {
     const btnBgBelow = String(formData.get("button_bg_color_below") || "").trim() || null;
     const btnTextBelow = String(formData.get("button_text_color_below") || "").trim() || null;
     const textAlign = String(formData.get("text_alignment") || "").trim() || null;
+    const textAlignDesktop = String(formData.get("text_alignment_desktop") || "").trim() || null;
+    const textAlignMobile = String(formData.get("text_alignment_mobile") || "").trim() || null;
     const addCreateStyling = (c) => ({
       ...c,
       css_class: cssClass,
@@ -1171,6 +1218,8 @@ export const action = async ({ request }) => {
       button_bg_color_below: btnBgBelow,
       button_text_color_below: btnTextBelow,
       text_alignment: textAlign,
+      text_alignment_desktop: textAlignDesktop,
+      text_alignment_mobile: textAlignMobile,
       vertical_alignment: (() => {
         const v = formData.get("vertical_alignment");
         return v != null && v !== "" ? String(v).trim() : null;

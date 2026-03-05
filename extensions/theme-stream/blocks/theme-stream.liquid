@@ -134,6 +134,8 @@
               {% assign selected_headline_color = tc.headline_color %}
               {% assign selected_desc_color = tc.description_color %}
               {% assign selected_text_alignment = tc.text_alignment %}
+              {% assign selected_text_alignment_desktop = tc.text_alignment_desktop %}
+              {% assign selected_text_alignment_mobile = tc.text_alignment_mobile %}
               {% assign selected_overlay_opacity = tc.overlay_opacity %}
               {% assign selected_overlay_color = tc.overlay_color %}
               {% assign selected_vertical_alignment = tc.vertical_alignment %}
@@ -167,6 +169,8 @@
               {% assign selected_headline_color = blank %}
               {% assign selected_desc_color = blank %}
               {% assign selected_text_alignment = blank %}
+              {% assign selected_text_alignment_desktop = blank %}
+              {% assign selected_text_alignment_mobile = blank %}
               {% assign selected_overlay_opacity = blank %}
               {% assign selected_overlay_color = blank %}
               {% assign selected_vertical_alignment = blank %}
@@ -237,8 +241,8 @@
     {% endif %}
     {% assign overlay_opacity = overlay_opacity_raw | divided_by: 100.0 %}
     {% assign vertical_alignment = selected_vertical_alignment | default: 'bottom' %}
-    {% assign content_alignment_desktop = selected_text_alignment | default: 'left' %}
-    {% assign content_alignment_mobile = selected_text_alignment | default: 'left' %}
+    {% assign content_alignment_desktop = selected_text_alignment_desktop | default: selected_text_alignment | default: 'left' %}
+    {% assign content_alignment_mobile = selected_text_alignment_mobile | default: selected_text_alignment | default: 'left' %}
     {% assign button_padding_top = 12 %}
     {% assign button_padding_bottom = 12 %}
     {% assign button_padding_left = 30 %}
@@ -273,7 +277,9 @@
     {% if selected_desc_color_below != blank %}{% assign description_color_below = selected_desc_color_below %}{% endif %}
     {% if selected_button_bg_below != blank %}{% assign button_bg_below = selected_button_bg_below %}{% endif %}
     {% if selected_button_text_color_below != blank %}{% assign button_text_below = selected_button_text_color_below %}{% endif %}
-    {% if selected_text_alignment != blank %}{% assign content_alignment_desktop = selected_text_alignment %}{% assign content_alignment_mobile = selected_text_alignment %}{% endif %}
+    {% if selected_text_alignment_desktop != blank %}{% assign content_alignment_desktop = selected_text_alignment_desktop %}{% endif %}
+    {% if selected_text_alignment_mobile != blank %}{% assign content_alignment_mobile = selected_text_alignment_mobile %}{% endif %}
+    {% if selected_text_alignment != blank and selected_text_alignment_desktop == blank and selected_text_alignment_mobile == blank %}{% assign content_alignment_desktop = selected_text_alignment %}{% assign content_alignment_mobile = selected_text_alignment %}{% endif %}
     
     <a href="{{ selected_target_url | default: '#' }}" class="theme-stream__link theme-stream__hero-link" style="--headline-size: {{ headline_font_size }}em; --desc-size: {{ description_font_size }}em; --btn-size: {{ button_font_size }}em; --btn-radius: {{ button_border_radius }}px; --btn-pad-t: {{ button_padding_top }}px; --btn-pad-r: {{ button_padding_right }}px; --btn-pad-b: {{ button_padding_bottom }}px; --btn-pad-l: {{ button_padding_left }}px; --title-overlay: {{ title_color_overlay }}; --desc-overlay: {{ description_color_overlay }}; --btn-bg-overlay: {{ button_bg_overlay }}; --btn-text-overlay: {{ button_text_overlay }}; --title-below: {{ title_color_below }}; --desc-below: {{ description_color_below }}; --btn-bg-below: {{ button_bg_below }}; --btn-text-below: {{ button_text_below }}; --headline-below-size: {{ headline_font_size | times: 0.8 }}em;{% if title_font != blank %} --title-font: {{ title_font.family }}, {{ title_font.fallback_families }}; --title-weight: {{ title_font.weight }}; --title-style: {{ title_font.style }};{% endif %}{% if description_font != blank %} --desc-font: {{ description_font.family }}, {{ description_font.fallback_families }}; --desc-weight: {{ description_font.weight }}; --desc-style: {{ description_font.style }};{% endif %}{% if button_text_uppercase %} --btn-uppercase: uppercase;{% else %} --btn-uppercase: none;{% endif %}">
       <div class="theme-stream__banner-container {% if mobile_content_below %}theme-stream__banner-container--mobile-below{% endif %}">
@@ -283,10 +289,10 @@
             <div class="theme-stream__banner-content theme-stream__banner-content--desktop theme-stream__banner-content--v-{{ vertical_alignment }} theme-stream__banner-content--align-{{ content_alignment_desktop }}{% if overlay_opacity == 0 %} theme-stream__banner-content--no-overlay{% endif %}" style="--overlay-color: {{ overlay_color }}; --overlay-opacity: {{ overlay_opacity }};">
               <div class="theme-stream__content-inner">
                 {% if selected_title != blank %}
-                  <div class="theme-stream__title theme-stream__title--overlay" data-html="{{ selected_title | escape }}"></div>
+                  <div class="theme-stream__title theme-stream__title--overlay"{% if selected_headline_font_size != blank %} style="font-size: {{ selected_headline_font_size }}em"{% endif %} data-html="{{ selected_title | escape }}"></div>
                 {% endif %}
                 {% if selected_description != blank %}
-                  <div class="theme-stream__description theme-stream__description--overlay" data-html="{{ selected_description | escape }}"></div>
+                  <div class="theme-stream__description theme-stream__description--overlay"{% if selected_desc_font_size != blank %} style="font-size: {{ selected_desc_font_size }}em"{% endif %} data-html="{{ selected_description | escape }}"></div>
                 {% endif %}
                 {% if selected_button_text != blank %}
                   <span class="button theme-stream__button theme-stream__button--overlay">{{ selected_button_text }}</span>
@@ -303,10 +309,10 @@
               <div class="theme-stream__banner-content theme-stream__banner-content--mobile theme-stream__banner-content--v-{{ vertical_alignment }} theme-stream__banner-content--align-{{ content_alignment_mobile }}{% if overlay_opacity == 0 %} theme-stream__banner-content--no-overlay{% endif %}" style="--overlay-color: {{ overlay_color }}; --overlay-opacity: {{ overlay_opacity }};">
                 <div class="theme-stream__content-inner">
                   {% if selected_title != blank %}
-                    <div class="theme-stream__title theme-stream__title--overlay" data-html="{{ selected_title | escape }}"></div>
+                    <div class="theme-stream__title theme-stream__title--overlay"{% if selected_headline_font_size != blank %} style="font-size: {{ selected_headline_font_size }}em"{% endif %} data-html="{{ selected_title | escape }}"></div>
                   {% endif %}
                   {% if selected_description != blank %}
-                    <div class="theme-stream__description theme-stream__description--overlay" data-html="{{ selected_description | escape }}"></div>
+                    <div class="theme-stream__description theme-stream__description--overlay"{% if selected_desc_font_size != blank %} style="font-size: {{ selected_desc_font_size }}em"{% endif %} data-html="{{ selected_description | escape }}"></div>
                   {% endif %}
                   {% if selected_button_text != blank %}
                     <span class="button theme-stream__button theme-stream__button--overlay">{{ selected_button_text }}</span>
@@ -320,10 +326,10 @@
         {% if mobile_content_below %}
           <div class="theme-stream__content-below theme-stream__content-below--mobile-only theme-stream__content-below--align-{{ content_alignment_mobile }}">
             {% if selected_title != blank %}
-              <div class="theme-stream__title theme-stream__title--below" data-html="{{ selected_title | escape }}"></div>
+              <div class="theme-stream__title theme-stream__title--below"{% if selected_headline_font_size != blank %} style="font-size: {{ selected_headline_font_size }}em"{% endif %} data-html="{{ selected_title | escape }}"></div>
             {% endif %}
             {% if selected_description != blank %}
-              <div class="theme-stream__description theme-stream__description--below" data-html="{{ selected_description | escape }}"></div>
+              <div class="theme-stream__description theme-stream__description--below"{% if selected_desc_font_size != blank %} style="font-size: {{ selected_desc_font_size }}em"{% endif %} data-html="{{ selected_description | escape }}"></div>
             {% endif %}
             {% if selected_button_text != blank %}
               <span class="button theme-stream__button theme-stream__button--below">{{ selected_button_text }}</span>
@@ -360,7 +366,7 @@
     {% assign coll_desc_color = selected_desc_color | default: '#ffffff' %}
     {% assign coll_btn_bg = selected_button_bg | default: '#ffffff' %}
     {% assign coll_btn_text = selected_button_text_color | default: '#667eea' %}
-    {% assign coll_content_align = selected_text_alignment | default: 'left' %}
+    {% assign coll_content_align = selected_text_alignment_desktop | default: selected_text_alignment | default: 'left' %}
     {% assign coll_vertical_alignment = selected_vertical_alignment | default: 'bottom' %}
     <a href="{{ coll_url }}" class="theme-stream__link theme-stream__collection-link" style="--headline-size: {{ coll_headline_size }}em; --desc-size: {{ coll_desc_size }}em; --btn-size: {{ coll_btn_size }}em; --btn-radius: {{ coll_btn_radius }}px; --btn-pad-t: {{ coll_btn_pad }}px; --btn-pad-r: {{ coll_btn_pad_h }}px; --btn-pad-b: {{ coll_btn_pad }}px; --btn-pad-l: {{ coll_btn_pad_h }}px; --title-overlay: {{ coll_title_color }}; --desc-overlay: {{ coll_desc_color }}; --btn-bg-overlay: {{ coll_btn_bg }}; --btn-text-overlay: {{ coll_btn_text }};">
       <div class="theme-stream__collection theme-stream__collection--banner{% if banner_min_d != 'auto' %} theme-stream__banner--fixed-height{% endif %}"{% if banner_min_d != 'auto' %} style="min-height: {{ banner_min_d }}; --banner-fit: {{ img_fit_d }};"{% endif %}>
@@ -371,8 +377,8 @@
         {% if selected_overlay_opacity == nil or selected_overlay_opacity == '' %}{% assign coll_overlay_raw = 50 %}{% else %}{% assign coll_overlay_raw = selected_overlay_opacity %}{% endif %}
         {% assign coll_overlay_opacity = coll_overlay_raw | divided_by: 100.0 %}
         <div class="theme-stream__banner-content theme-stream__banner-content--v-{{ coll_vertical_alignment }} theme-stream__banner-content--align-{{ coll_content_align }}{% if coll_overlay_opacity == 0 %} theme-stream__banner-content--no-overlay{% endif %}" style="--overlay-color: {{ coll_overlay_color }}; --overlay-opacity: {{ coll_overlay_opacity }};">
-          <div class="theme-stream__title theme-stream__title--overlay" data-html="{{ coll_title | escape }}"></div>
-          {% if selected_description != blank %}<div class="theme-stream__description theme-stream__description--overlay" data-html="{{ selected_description | escape }}"></div>{% endif %}
+          <div class="theme-stream__title theme-stream__title--overlay"{% if selected_headline_font_size != blank %} style="font-size: {{ selected_headline_font_size }}em"{% endif %} data-html="{{ coll_title | escape }}"></div>
+          {% if selected_description != blank %}<div class="theme-stream__description theme-stream__description--overlay"{% if selected_desc_font_size != blank %} style="font-size: {{ selected_desc_font_size }}em"{% endif %} data-html="{{ selected_description | escape }}"></div>{% endif %}
           {% if selected_button_text != blank %}<span class="button theme-stream__button theme-stream__button--overlay">{{ selected_button_text }}</span>{% endif %}
         </div>
       </div>
@@ -394,11 +400,11 @@
           </div>
         {% endif %}
         <div class="theme-stream__countdown-inner">
-          {% if selected_countdown_headline != blank %}<div class="theme-stream__countdown-headline" data-html="{{ selected_countdown_headline | escape }}"></div>{% endif %}
+          {% if selected_countdown_headline != blank %}<div class="theme-stream__countdown-headline"{% if selected_headline_font_size != blank %} style="font-size: {{ selected_headline_font_size }}em"{% endif %} data-html="{{ selected_countdown_headline | escape }}"></div>{% endif %}
           <div class="theme-stream__countdown-timer" data-target="{{ selected_countdown_target }}">
             <span data-days>0</span>d <span data-hours>0</span>h <span data-mins>0</span>m <span data-secs>0</span>s
           </div>
-          {% if selected_countdown_subtext != blank %}<div class="theme-stream__countdown-subtext" data-html="{{ selected_countdown_subtext | escape }}"></div>{% endif %}
+          {% if selected_countdown_subtext != blank %}<div class="theme-stream__countdown-subtext"{% if selected_desc_font_size != blank %} style="font-size: {{ selected_desc_font_size }}em"{% endif %} data-html="{{ selected_countdown_subtext | escape }}"></div>{% endif %}
           {% if selected_countdown_btn != blank %}<span class="button theme-stream__button">{{ selected_countdown_btn }}</span>{% endif %}
         </div>
       </div>
@@ -418,13 +424,14 @@
     {% assign iwt_text_pct = 100 | minus: iwt_img_pct %}
     {% assign iwt_gap_d = selected_iwt_gap_desktop | default: 20 | plus: 0 %}
     {% assign iwt_gap_m = selected_iwt_gap_mobile | default: 16 | plus: 0 %}
-    {% assign iwt_img_deduct = iwt_gap_d | times: iwt_img_pct | divided_by: 100 %}
-    {% assign iwt_text_deduct = iwt_gap_d | times: iwt_text_pct | divided_by: 100 %}
+    {% comment %} Desktop: image keeps its % width; gap is taken entirely from text side {% endcomment %}
+    {% assign iwt_img_deduct = 0 %}
+    {% assign iwt_text_deduct = iwt_gap_d %}
     <div class="theme-stream__iwt theme-stream__iwt--{{ selected_iwt_layout }}" style="--btn-bg: {{ iwt_btn_bg }}; --btn-color: {{ iwt_btn_color }}; --btn-radius: {{ iwt_btn_radius }}px; --btn-pad: {{ iwt_btn_pad }}px; --btn-pad-h: {{ iwt_btn_pad_h }}px; --head-color: {{ iwt_head_color }}; --desc-color: {{ iwt_desc_color }}; --iwt-img-pct: {{ iwt_img_pct }}%; --iwt-text-pct: {{ iwt_text_pct }}%; --iwt-gap-desktop: {{ iwt_gap_d }}px; --iwt-gap-mobile: {{ iwt_gap_m }}px; --iwt-img-deduct: {{ iwt_img_deduct }}px; --iwt-text-deduct: {{ iwt_text_deduct }}px;">
       {% if selected_iwt_layout == 'image_right' %}
         <div class="theme-stream__iwt-text">
-          {% if selected_title != blank %}<div class="theme-stream__title" data-html="{{ selected_title | escape }}"></div>{% endif %}
-          {% if selected_description != blank %}<div class="theme-stream__description" data-html="{{ selected_description | escape }}"></div>{% endif %}
+          {% if selected_title != blank %}<div class="theme-stream__title"{% if selected_headline_font_size != blank %} style="font-size: {{ selected_headline_font_size }}em"{% endif %} data-html="{{ selected_title | escape }}"></div>{% endif %}
+          {% if selected_description != blank %}<div class="theme-stream__description"{% if selected_desc_font_size != blank %} style="font-size: {{ selected_desc_font_size }}em"{% endif %} data-html="{{ selected_description | escape }}"></div>{% endif %}
           {% if selected_button_text != blank %}<a href="{{ iwt_link }}" class="button theme-stream__button">{{ selected_button_text }}</a>{% endif %}
         </div>
       {% endif %}
@@ -433,8 +440,8 @@
       </div>
       {% if selected_iwt_layout == 'image_left' %}
         <div class="theme-stream__iwt-text">
-          {% if selected_title != blank %}<div class="theme-stream__title" data-html="{{ selected_title | escape }}"></div>{% endif %}
-          {% if selected_description != blank %}<div class="theme-stream__description" data-html="{{ selected_description | escape }}"></div>{% endif %}
+          {% if selected_title != blank %}<div class="theme-stream__title"{% if selected_headline_font_size != blank %} style="font-size: {{ selected_headline_font_size }}em"{% endif %} data-html="{{ selected_title | escape }}"></div>{% endif %}
+          {% if selected_description != blank %}<div class="theme-stream__description"{% if selected_desc_font_size != blank %} style="font-size: {{ selected_desc_font_size }}em"{% endif %} data-html="{{ selected_description | escape }}"></div>{% endif %}
           {% if selected_button_text != blank %}<a href="{{ iwt_link }}" class="button theme-stream__button">{{ selected_button_text }}</a>{% endif %}
         </div>
       {% endif %}
@@ -460,8 +467,8 @@
           <source src="{{ vid_src }}" type="video/mp4">
         </video>
         <div class="theme-stream__video-overlay" style="background-color: rgba(0,0,0,{{ selected_video_overlay | divided_by: 100.0 }}); --btn-bg: {{ vid_btn_bg }}; --btn-color: {{ vid_btn_color }}; --btn-radius: {{ vid_btn_radius }}px; --btn-pad: {{ vid_btn_pad }}px; --btn-pad-h: {{ vid_btn_pad_h }}px; --head-color: {{ vid_head_color }}; --desc-color: {{ vid_desc_color }};">
-          {% if selected_title != blank %}<div class="theme-stream__video-title" data-html="{{ selected_title | escape }}"></div>{% endif %}
-          {% if selected_description != blank %}<div class="theme-stream__video-desc" data-html="{{ selected_description | escape }}"></div>{% endif %}
+          {% if selected_title != blank %}<div class="theme-stream__video-title"{% if selected_headline_font_size != blank %} style="font-size: {{ selected_headline_font_size }}em"{% endif %} data-html="{{ selected_title | escape }}"></div>{% endif %}
+          {% if selected_description != blank %}<div class="theme-stream__video-desc"{% if selected_desc_font_size != blank %} style="font-size: {{ selected_desc_font_size }}em"{% endif %} data-html="{{ selected_description | escape }}"></div>{% endif %}
           {% if selected_button_text != blank and selected_target_url != blank %}<a href="{{ selected_target_url }}" class="button theme-stream__button">{{ selected_button_text }}</a>{% endif %}
         </div>
       </div>
@@ -480,8 +487,8 @@
           {{ selected_promo_image | image_url: width: 600 | image_tag: alt: selected_promo_title, loading: 'lazy', class: 'theme-stream__promo-img' }}
         </div>
         <div class="theme-stream__promo-body">
-          {% if selected_promo_title != blank %}<div class="theme-stream__promo-title" data-html="{{ selected_promo_title | escape }}"></div>{% endif %}
-          {% if selected_promo_desc != blank %}<div class="theme-stream__promo-desc" data-html="{{ selected_promo_desc | escape }}"></div>{% endif %}
+          {% if selected_promo_title != blank %}<div class="theme-stream__promo-title"{% if selected_headline_font_size != blank %} style="font-size: {{ selected_headline_font_size }}em"{% endif %} data-html="{{ selected_promo_title | escape }}"></div>{% endif %}
+          {% if selected_promo_desc != blank %}<div class="theme-stream__promo-desc"{% if selected_desc_font_size != blank %} style="font-size: {{ selected_desc_font_size }}em"{% endif %} data-html="{{ selected_promo_desc | escape }}"></div>{% endif %}
           {% if selected_promo_btn != blank %}<span class="button theme-stream__button">{{ selected_promo_btn }}</span>{% endif %}
         </div>
       </div>

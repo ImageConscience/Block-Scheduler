@@ -12,7 +12,8 @@
 
 1. **Fresh install / re-install**
    - Install the app on a development store.
-   - Expect to be redirected to the Shopify billing confirmation screen (7-day trial).
+   - Expect to see the plan selection page (Starter $9, Streamer $29 for Standard; Streamer Plus $49 for Plus).
+   - Select a plan; expect to be redirected to the Shopify billing confirmation screen (7-day trial).
    - Accept the charge and confirm the app loads the dashboard without loops.
 2. **Cancel subscription**
    - From the dev store’s *Apps > Manage subscription* screen, cancel the plan.
