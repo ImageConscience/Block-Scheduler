@@ -257,14 +257,20 @@ export default function BlockPreview({ blockType, data = {}, mediaFiles = [], vi
         const splitPct = Math.min(90, Math.max(10, Number(data.image_split_percent) || 50));
         const imgPct = splitPct;
         const textPct = 100 - splitPct;
+        const gapD = Math.max(0, Number(data.gap_desktop) || 20);
+        const gapM = Math.max(0, Number(data.gap_mobile) || 16);
+        const imgDeduct = Math.floor((gapD * imgPct) / 100);
+        const textDeduct = Math.floor((gapD * textPct) / 100);
         const isImageRight = data.image_with_text_layout === "image_right";
-        const imgFlex = isMobile ? undefined : `0 0 ${imgPct}%`;
-        const textFlex = isMobile ? undefined : `0 0 ${textPct}%`;
+        const imgFlex = isMobile ? undefined : `0 0 calc(${imgPct}% - ${imgDeduct}px)`;
+        const textFlex = isMobile ? undefined : `0 0 calc(${textPct}% - ${textDeduct}px)`;
         return (
           <div style={{
             ...previewStyles.iwt,
             flexDirection: isMobile ? "column" : (isImageRight ? "row-reverse" : "row"),
-            alignItems: isMobile ? "stretch" : "stretch",
+            flexWrap: isMobile ? "wrap" : "nowrap",
+            alignItems: "stretch",
+            gap: isMobile ? gapM : gapD,
           }}>
             <div style={{
               flex: imgFlex,

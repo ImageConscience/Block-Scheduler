@@ -569,6 +569,14 @@ export default function ThemeStreamPage() {
                     <input type="number" name="image_split_percent" min={10} max={90} step={5} defaultValue={50} placeholder="50" style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
                     <p style={{ margin: "0.25rem 0 0", fontSize: "0.75rem", color: "#6d7175" }}>Split between image and text. 50 = 50/50. Mobile stays stacked.</p>
                   </div>
+                  <div style={{ marginBottom: "0.5rem" }}>
+                    <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Column gap (desktop, px)</label>
+                    <input type="number" name="gap_desktop" min={0} max={80} step={4} defaultValue={20} placeholder="20" style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+                  </div>
+                  <div style={{ marginBottom: "0.5rem" }}>
+                    <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Row gap (mobile, px)</label>
+                    <input type="number" name="gap_mobile" min={0} max={80} step={4} defaultValue={16} placeholder="16" style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+                  </div>
                     </>
                   )}
                   {formBlockType === "background_video" && (
@@ -1439,6 +1447,8 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
         imageWithTextButtonLink: formData.get("image_with_text_button_link") || "",
         imageWithTextLayout: formData.get("image_with_text_layout") || "image_left",
         imageSplitPercent: formData.get("image_split_percent") || "50",
+        gapDesktop: formData.get("gap_desktop") || "20",
+        gapMobile: formData.get("gap_mobile") || "16",
       };
     }
     if (blockType === "background_video") {
@@ -1816,6 +1826,14 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
                 <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Image width % (desktop)</label>
                 <input type="number" name="image_split_percent" min={10} max={90} step={5} defaultValue={typeConfig.image_split_percent ?? 50} placeholder="50" style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
                 <p style={{ margin: "0.25rem 0 0", fontSize: "0.75rem", color: "#6d7175" }}>Split between image and text. 50 = 50/50. Mobile stays stacked.</p>
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Column gap (desktop, px)</label>
+                <input type="number" name="gap_desktop" min={0} max={80} step={4} defaultValue={typeConfig.gap_desktop ?? 20} placeholder="20" style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Row gap (mobile, px)</label>
+                <input type="number" name="gap_mobile" min={0} max={80} step={4} defaultValue={typeConfig.gap_mobile ?? 16} placeholder="16" style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
               </div>
             </>
           )}

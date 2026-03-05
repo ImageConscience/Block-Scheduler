@@ -472,6 +472,8 @@ export const action = async ({ request }) => {
               button_link: body.imageWithTextButtonLink || null,
               layout: body.imageWithTextLayout || "image_left",
               image_split_percent: body.imageSplitPercent != null ? String(body.imageSplitPercent) : "50",
+              gap_desktop: body.gapDesktop != null ? String(body.gapDesktop) : "20",
+              gap_mobile: body.gapMobile != null ? String(body.gapMobile) : "16",
             }));
             if (body.imageWithTextImage) fields.push({ key: "desktop_banner", value: body.imageWithTextImage });
           } else if (blockType === "background_video") {
@@ -1252,6 +1254,8 @@ export const action = async ({ request }) => {
       const iwtLink = String(formData.get("image_with_text_button_link") || "").trim();
       const iwtLayout = String(formData.get("image_with_text_layout") || "image_left").trim();
       const iwtSplit = formData.get("image_split_percent");
+      const iwtGapD = formData.get("gap_desktop");
+      const iwtGapM = formData.get("gap_mobile");
       typeConfig = JSON.stringify(addCreateStyling({
         image: iwtImage,
         headline: iwtHeadline || null,
@@ -1260,6 +1264,8 @@ export const action = async ({ request }) => {
         button_link: iwtLink || null,
         layout: iwtLayout,
         image_split_percent: iwtSplit != null && iwtSplit !== "" ? String(iwtSplit) : "50",
+        gap_desktop: iwtGapD != null && iwtGapD !== "" ? String(iwtGapD) : "20",
+        gap_mobile: iwtGapM != null && iwtGapM !== "" ? String(iwtGapM) : "16",
       }));
       if (iwtImage) fields.push({ key: "desktop_banner", value: iwtImage });
     } else if (blockType === "background_video") {
