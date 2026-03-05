@@ -286,7 +286,7 @@
                   <p class="theme-stream__description theme-stream__description--overlay" data-html="{{ selected_description | escape }}"></p>
                 {% endif %}
                 {% if selected_button_text != blank %}
-                  <span class="theme-stream__button theme-stream__button--overlay">{{ selected_button_text }}</span>
+                  <span class="button theme-stream__button theme-stream__button--overlay">{{ selected_button_text }}</span>
                 {% endif %}
               </div>
             </div>
@@ -306,7 +306,7 @@
                     <p class="theme-stream__description theme-stream__description--overlay" data-html="{{ selected_description | escape }}"></p>
                   {% endif %}
                   {% if selected_button_text != blank %}
-                    <span class="theme-stream__button theme-stream__button--overlay">{{ selected_button_text }}</span>
+                    <span class="button theme-stream__button theme-stream__button--overlay">{{ selected_button_text }}</span>
                   {% endif %}
                 </div>
               </div>
@@ -323,7 +323,7 @@
               <p class="theme-stream__description theme-stream__description--below" data-html="{{ selected_description | escape }}"></p>
             {% endif %}
             {% if selected_button_text != blank %}
-              <span class="theme-stream__button theme-stream__button--below">{{ selected_button_text }}</span>
+              <span class="button theme-stream__button theme-stream__button--below">{{ selected_button_text }}</span>
             {% endif %}
           </div>
         {% endif %}
@@ -370,13 +370,18 @@
         <div class="theme-stream__banner-content theme-stream__banner-content--v-{{ coll_vertical_alignment }} theme-stream__banner-content--align-{{ coll_content_align }}{% if coll_overlay_opacity == 0 %} theme-stream__banner-content--no-overlay{% endif %}" style="--overlay-color: {{ coll_overlay_color }}; --overlay-opacity: {{ coll_overlay_opacity }};">
           <h2 class="theme-stream__title theme-stream__title--overlay" data-html="{{ coll_title | escape }}"></h2>
           {% if selected_description != blank %}<p class="theme-stream__description theme-stream__description--overlay" data-html="{{ selected_description | escape }}"></p>{% endif %}
-          {% if selected_button_text != blank %}<span class="theme-stream__button theme-stream__button--overlay">{{ selected_button_text }}</span>{% endif %}
+          {% if selected_button_text != blank %}<span class="button theme-stream__button theme-stream__button--overlay">{{ selected_button_text }}</span>{% endif %}
         </div>
       </div>
     </a>
   {% elsif show_countdown %}
     {% assign countdown_link = selected_countdown_link | default: '#' %}
-    <a href="{{ countdown_link }}" class="theme-stream__link">
+    {% assign cd_btn_bg = selected_button_bg | default: 'rgba(255,255,255,0.2)' %}
+    {% assign cd_btn_color = selected_button_text_color | default: '#ffffff' %}
+    {% assign cd_btn_radius = selected_button_radius | default: 6 %}
+    {% assign cd_btn_pad = selected_button_padding_vertical | default: 12 %}
+    {% assign cd_btn_pad_h = selected_button_padding_horizontal | default: 30 %}
+    <a href="{{ countdown_link }}" class="theme-stream__link theme-stream__countdown-link" style="--btn-bg: {{ cd_btn_bg }}; --btn-color: {{ cd_btn_color }}; --btn-radius: {{ cd_btn_radius }}px; --btn-pad: {{ cd_btn_pad }}px; --btn-pad-h: {{ cd_btn_pad_h }}px;">
       <div id="countdown-{{ block.id | default: 'main' }}" class="theme-stream__countdown theme-stream__countdown--bar{% if banner_min_d != 'auto' %} theme-stream__countdown--fixed-height{% endif %}" style="background-color: {{ selected_countdown_bg }}; color: {{ selected_countdown_text_color }};{% if banner_min_d != 'auto' %} min-height: {{ banner_min_d }}; --banner-fit: {{ img_fit_d }};{% endif %}">
         {% if selected_countdown_bg_img != blank %}
           {% if selected_overlay_opacity == nil or selected_overlay_opacity == '' %}{% assign cd_bg_raw = 30 %}{% else %}{% assign cd_bg_raw = selected_overlay_opacity %}{% endif %}
@@ -391,18 +396,25 @@
             <span data-days>0</span>d <span data-hours>0</span>h <span data-mins>0</span>m <span data-secs>0</span>s
           </div>
           {% if selected_countdown_subtext != blank %}<p class="theme-stream__countdown-subtext" data-html="{{ selected_countdown_subtext | escape }}"></p>{% endif %}
-          {% if selected_countdown_btn != blank %}<span class="theme-stream__button">{{ selected_countdown_btn }}</span>{% endif %}
+          {% if selected_countdown_btn != blank %}<span class="button theme-stream__button">{{ selected_countdown_btn }}</span>{% endif %}
         </div>
       </div>
     </a>
   {% elsif show_iwt %}
     {% assign iwt_link = selected_iwt_link | default: '#' %}
-    <div class="theme-stream__iwt theme-stream__iwt--{{ selected_iwt_layout }}">
+    {% assign iwt_btn_bg = selected_button_bg | default: '#667eea' %}
+    {% assign iwt_btn_color = selected_button_text_color | default: '#ffffff' %}
+    {% assign iwt_btn_radius = selected_button_radius | default: 6 %}
+    {% assign iwt_btn_pad = selected_button_padding_vertical | default: 12 %}
+    {% assign iwt_btn_pad_h = selected_button_padding_horizontal | default: 30 %}
+    {% assign iwt_head_color = selected_headline_color | default: '#34495e' %}
+    {% assign iwt_desc_color = selected_desc_color | default: '#6d7175' %}
+    <div class="theme-stream__iwt theme-stream__iwt--{{ selected_iwt_layout }}" style="--btn-bg: {{ iwt_btn_bg }}; --btn-color: {{ iwt_btn_color }}; --btn-radius: {{ iwt_btn_radius }}px; --btn-pad: {{ iwt_btn_pad }}px; --btn-pad-h: {{ iwt_btn_pad_h }}px; --head-color: {{ iwt_head_color }}; --desc-color: {{ iwt_desc_color }};">
       {% if selected_iwt_layout == 'image_right' %}
         <div class="theme-stream__iwt-text">
           {% if selected_title != blank %}<h2 class="theme-stream__title" data-html="{{ selected_title | escape }}"></h2>{% endif %}
           {% if selected_description != blank %}<p class="theme-stream__description" data-html="{{ selected_description | escape }}"></p>{% endif %}
-          {% if selected_button_text != blank %}<a href="{{ iwt_link }}" class="theme-stream__button">{{ selected_button_text }}</a>{% endif %}
+          {% if selected_button_text != blank %}<a href="{{ iwt_link }}" class="button theme-stream__button">{{ selected_button_text }}</a>{% endif %}
         </div>
       {% endif %}
       <div class="theme-stream__iwt-img">
@@ -412,7 +424,7 @@
         <div class="theme-stream__iwt-text">
           {% if selected_title != blank %}<h2 class="theme-stream__title" data-html="{{ selected_title | escape }}"></h2>{% endif %}
           {% if selected_description != blank %}<p class="theme-stream__description" data-html="{{ selected_description | escape }}"></p>{% endif %}
-          {% if selected_button_text != blank %}<a href="{{ iwt_link }}" class="theme-stream__button">{{ selected_button_text }}</a>{% endif %}
+          {% if selected_button_text != blank %}<a href="{{ iwt_link }}" class="button theme-stream__button">{{ selected_button_text }}</a>{% endif %}
         </div>
       {% endif %}
     </div>
@@ -425,19 +437,33 @@
       {% endif %}
     {% endif %}
     {% if vid_src != blank %}
+      {% assign vid_btn_bg = selected_button_bg | default: '#ffffff' %}
+      {% assign vid_btn_color = selected_button_text_color | default: '#667eea' %}
+      {% assign vid_btn_radius = selected_button_radius | default: 6 %}
+      {% assign vid_btn_pad = selected_button_padding_vertical | default: 12 %}
+      {% assign vid_btn_pad_h = selected_button_padding_horizontal | default: 30 %}
+      {% assign vid_head_color = selected_headline_color | default: '#ffffff' %}
+      {% assign vid_desc_color = selected_desc_color | default: '#ffffff' %}
       <div class="theme-stream__video-wrap"{% if banner_min_d != 'auto' %} style="min-height: {{ banner_min_d }}; --banner-fit: {{ img_fit_d }};"{% endif %}>
         <video class="theme-stream__video" autoplay muted loop playsinline>
           <source src="{{ vid_src }}" type="video/mp4">
         </video>
-        <div class="theme-stream__video-overlay" style="background-color: rgba(0,0,0,{{ selected_video_overlay | divided_by: 100.0 }});">
+        <div class="theme-stream__video-overlay" style="background-color: rgba(0,0,0,{{ selected_video_overlay | divided_by: 100.0 }}); --btn-bg: {{ vid_btn_bg }}; --btn-color: {{ vid_btn_color }}; --btn-radius: {{ vid_btn_radius }}px; --btn-pad: {{ vid_btn_pad }}px; --btn-pad-h: {{ vid_btn_pad_h }}px; --head-color: {{ vid_head_color }}; --desc-color: {{ vid_desc_color }};">
           {% if selected_title != blank %}<h2 class="theme-stream__video-title" data-html="{{ selected_title | escape }}"></h2>{% endif %}
           {% if selected_description != blank %}<p class="theme-stream__video-desc" data-html="{{ selected_description | escape }}"></p>{% endif %}
-          {% if selected_button_text != blank and selected_target_url != blank %}<a href="{{ selected_target_url }}" class="theme-stream__button">{{ selected_button_text }}</a>{% endif %}
+          {% if selected_button_text != blank and selected_target_url != blank %}<a href="{{ selected_target_url }}" class="button theme-stream__button">{{ selected_button_text }}</a>{% endif %}
         </div>
       </div>
     {% endif %}
   {% elsif show_promo %}
-    <a href="{{ selected_promo_url | default: '#' }}" class="theme-stream__link">
+    {% assign promo_btn_bg = selected_button_bg | default: '#667eea' %}
+    {% assign promo_btn_color = selected_button_text_color | default: '#ffffff' %}
+    {% assign promo_btn_radius = selected_button_radius | default: 6 %}
+    {% assign promo_btn_pad = selected_button_padding_vertical | default: 12 %}
+    {% assign promo_btn_pad_h = selected_button_padding_horizontal | default: 30 %}
+    {% assign promo_head_color = selected_headline_color | default: '#333333' %}
+    {% assign promo_desc_color = selected_desc_color | default: '#6d7175' %}
+    <a href="{{ selected_promo_url | default: '#' }}" class="theme-stream__link theme-stream__promo-link" style="--btn-bg: {{ promo_btn_bg }}; --btn-color: {{ promo_btn_color }}; --btn-radius: {{ promo_btn_radius }}px; --btn-pad: {{ promo_btn_pad }}px; --btn-pad-h: {{ promo_btn_pad_h }}px; --head-color: {{ promo_head_color }}; --desc-color: {{ promo_desc_color }};">
       <div class="theme-stream__promo theme-stream__promo--card">
         <div class="theme-stream__promo-img-wrap{% if banner_min_d != 'auto' %} theme-stream__promo-img-wrap--fixed{% endif %}"{% if banner_min_d != 'auto' %} style="min-height: {{ banner_min_d }}; --banner-fit: {{ img_fit_d }};"{% endif %}>
           {{ selected_promo_image | image_url: width: 600 | image_tag: alt: selected_promo_title, loading: 'lazy', class: 'theme-stream__promo-img' }}
@@ -445,7 +471,7 @@
         <div class="theme-stream__promo-body">
           {% if selected_promo_title != blank %}<h3 class="theme-stream__promo-title" data-html="{{ selected_promo_title | escape }}"></h3>{% endif %}
           {% if selected_promo_desc != blank %}<p class="theme-stream__promo-desc" data-html="{{ selected_promo_desc | escape }}"></p>{% endif %}
-          {% if selected_promo_btn != blank %}<span class="theme-stream__button">{{ selected_promo_btn }}</span>{% endif %}
+          {% if selected_promo_btn != blank %}<span class="button theme-stream__button">{{ selected_promo_btn }}</span>{% endif %}
         </div>
       </div>
     </a>
@@ -693,12 +719,13 @@
 
   .theme-stream__hero-link .theme-stream__button--overlay,
   .theme-stream__collection-link .theme-stream__button--overlay {
-    padding: var(--btn-pad-t, 12px) var(--btn-pad-r, 30px) var(--btn-pad-b, 12px) var(--btn-pad-l, 30px);
-    font-size: var(--btn-size, 1em);
-    border-radius: var(--btn-radius, 6px);
-    background-color: var(--btn-bg-overlay, #fff);
-    color: var(--btn-text-overlay, #667eea);
-    text-transform: var(--btn-uppercase, none);
+    padding: var(--btn-pad-t, 12px) var(--btn-pad-r, 30px) var(--btn-pad-b, 12px) var(--btn-pad-l, 30px) !important;
+    font-size: var(--btn-size, 1em) !important;
+    border-radius: var(--btn-radius, 6px) !important;
+    background-color: var(--btn-bg-overlay, #fff) !important;
+    color: var(--btn-text-overlay, #667eea) !important;
+    text-transform: var(--btn-uppercase, none) !important;
+    border: none !important;
   }
 
   .theme-stream__collection-link .theme-stream__title--overlay {
@@ -713,8 +740,8 @@
   
   .theme-stream__title--below {
     margin: 0 0 10px 0;
-    font-size: var(--headline-below-size, 2em);
-    color: var(--title-below, #2c3e50);
+    font-size: var(--headline-below-size, 2em) !important;
+    color: var(--title-below, #2c3e50) !important;
     font-family: var(--title-font, inherit);
     font-weight: var(--title-weight, bold);
     font-style: var(--title-style, normal);
@@ -727,20 +754,21 @@
   
   .theme-stream__description--below {
     margin: 0 0 15px 0;
-    font-size: var(--desc-size, 0.9em);
-    color: var(--desc-below, #666);
+    font-size: var(--desc-size, 0.9em) !important;
+    color: var(--desc-below, #666) !important;
     font-family: var(--desc-font, inherit);
     font-weight: var(--desc-weight, normal);
     font-style: var(--desc-style, normal);
   }
 
   .theme-stream__content-below .theme-stream__button--below {
-    padding: var(--btn-pad-t, 12px) var(--btn-pad-r, 30px) var(--btn-pad-b, 12px) var(--btn-pad-l, 30px);
-    font-size: var(--btn-size, 1em);
-    border-radius: var(--btn-radius, 6px);
-    background-color: var(--btn-bg-below, #667eea);
-    color: var(--btn-text-below, #fff);
-    text-transform: var(--btn-uppercase, none);
+    padding: var(--btn-pad-t, 12px) var(--btn-pad-r, 30px) var(--btn-pad-b, 12px) var(--btn-pad-l, 30px) !important;
+    font-size: var(--btn-size, 1em) !important;
+    border-radius: var(--btn-radius, 6px) !important;
+    background-color: var(--btn-bg-below, #667eea) !important;
+    color: var(--btn-text-below, #fff) !important;
+    text-transform: var(--btn-uppercase, none) !important;
+    border: none !important;
   }
   
   .theme-stream__content-below--align-left {
@@ -788,17 +816,69 @@
   }
   
   
-      .theme-stream__button {
-        display: inline-block;
-        text-decoration: none;
-        font-weight: 600;
-        font-size: 1em;
-        transition: background-color 0.3s ease, transform 0.2s ease;
-        cursor: pointer;
-        width: auto;
-        border: none;
-        box-sizing: border-box;
-      }
+  .theme-stream__button {
+    display: inline-block !important;
+    text-decoration: none !important;
+    font-weight: 600 !important;
+    font-size: 1em !important;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    cursor: pointer !important;
+    width: auto !important;
+    border: none !important;
+    box-sizing: border-box !important;
+  }
+
+  .theme-stream__countdown-link .theme-stream__button {
+    padding: var(--btn-pad, 12px) var(--btn-pad-h, 30px) !important;
+    border-radius: var(--btn-radius, 6px) !important;
+    background-color: var(--btn-bg, rgba(255,255,255,0.2)) !important;
+    color: var(--btn-color, #fff) !important;
+  }
+
+  .theme-stream__iwt .theme-stream__button {
+    padding: var(--btn-pad, 12px) var(--btn-pad-h, 30px) !important;
+    border-radius: var(--btn-radius, 6px) !important;
+    background-color: var(--btn-bg, #667eea) !important;
+    color: var(--btn-color, #fff) !important;
+  }
+
+  .theme-stream__iwt .theme-stream__title {
+    color: var(--head-color, #34495e) !important;
+  }
+
+  .theme-stream__iwt .theme-stream__description {
+    color: var(--desc-color, #6d7175) !important;
+  }
+
+  .theme-stream__video-overlay .theme-stream__button {
+    padding: var(--btn-pad, 12px) var(--btn-pad-h, 30px) !important;
+    border-radius: var(--btn-radius, 6px) !important;
+    background-color: var(--btn-bg, #fff) !important;
+    color: var(--btn-color, #667eea) !important;
+  }
+
+  .theme-stream__video-overlay .theme-stream__video-title {
+    color: var(--head-color, #fff) !important;
+  }
+
+  .theme-stream__video-overlay .theme-stream__video-desc {
+    color: var(--desc-color, #fff) !important;
+  }
+
+  .theme-stream__promo-link .theme-stream__button {
+    padding: var(--btn-pad, 12px) var(--btn-pad-h, 30px) !important;
+    border-radius: var(--btn-radius, 6px) !important;
+    background-color: var(--btn-bg, #667eea) !important;
+    color: var(--btn-color, #fff) !important;
+  }
+
+  .theme-stream__promo-link .theme-stream__promo-title {
+    color: var(--head-color, #333) !important;
+  }
+
+  .theme-stream__promo-link .theme-stream__promo-desc {
+    color: var(--desc-color, #6d7175) !important;
+  }
   
   .theme-stream__link:hover .theme-stream__button {
     transform: translateY(-2px);
