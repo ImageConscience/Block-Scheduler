@@ -1347,13 +1347,13 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
   }, [entry?.id, blockType, updateEditPreview]);
 
   useEffect(() => {
-    const id = setInterval(updateEditPreview, 400);
+    const id = setInterval(updateEditPreview, 150);
     return () => clearInterval(id);
   }, [updateEditPreview]);
 
   const handleEditFormInput = useCallback(() => {
     if (editPreviewDebounceRef.current) clearTimeout(editPreviewDebounceRef.current);
-    editPreviewDebounceRef.current = setTimeout(updateEditPreview, 150);
+    editPreviewDebounceRef.current = setTimeout(updateEditPreview, 0);
   }, [updateEditPreview]);
 
   const buildUpdateData = (formData) => {
@@ -1698,11 +1698,11 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
           </div>
           <div style={{ marginBottom: "1rem" }}>
                 <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Headline</label>
-                <RichTextEditor name="headline" value={fieldMap.headline || typeConfig.headline || ""} placeholder="Headline" onChange={() => setTimeout(updateEditPreview, 50)} minHeight={60} />
+                <RichTextEditor name="headline" value={fieldMap.headline || typeConfig.headline || ""} placeholder="Headline" onChange={() => setTimeout(updateEditPreview, 0)} minHeight={60} />
           </div>
           <div style={{ marginBottom: "1rem" }}>
                 <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Description</label>
-                <RichTextEditor name="description" value={fieldMap.description || typeConfig.description || ""} placeholder="Description" onChange={() => setTimeout(updateEditPreview, 50)} minHeight={80} />
+                <RichTextEditor name="description" value={fieldMap.description || typeConfig.description || ""} placeholder="Description" onChange={() => setTimeout(updateEditPreview, 0)} minHeight={80} />
           </div>
           <div style={{ marginBottom: "1rem" }}>
                 <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Target URL</label>
@@ -1749,11 +1749,11 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
               <MediaLibraryPicker name="collection_banner_image" label="Banner Image (optional)" mediaFiles={mediaFiles} defaultValue={fieldMap.desktop_banner || ""} onSelect={() => setTimeout(updateEditPreview, 50)} />
               <div style={{ marginBottom: "1rem" }}>
                 <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Headline Override</label>
-                <RichTextEditor name="collection_headline" value={typeConfig.headline || ""} placeholder="Headline override" onChange={() => setTimeout(updateEditPreview, 50)} minHeight={50} />
+                <RichTextEditor name="collection_headline" value={typeConfig.headline || ""} placeholder="Headline override" onChange={() => setTimeout(updateEditPreview, 0)} minHeight={50} />
               </div>
               <div style={{ marginBottom: "1rem" }}>
                 <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Description</label>
-                <RichTextEditor name="collection_description" value={typeConfig.description || ""} placeholder="Description" onChange={() => setTimeout(updateEditPreview, 50)} minHeight={60} />
+                <RichTextEditor name="collection_description" value={typeConfig.description || ""} placeholder="Description" onChange={() => setTimeout(updateEditPreview, 0)} minHeight={60} />
               </div>
               <div style={{ marginBottom: "1rem" }}>
                 <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Button Text</label>
@@ -1769,11 +1769,11 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
               </div>
               <div style={{ marginBottom: "1rem" }}>
                 <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Headline</label>
-                <RichTextEditor name="countdown_headline" value={typeConfig.headline || ""} placeholder="Headline" onChange={() => setTimeout(updateEditPreview, 50)} minHeight={50} />
+                <RichTextEditor name="countdown_headline" value={typeConfig.headline || ""} placeholder="Headline" onChange={() => setTimeout(updateEditPreview, 0)} minHeight={50} />
               </div>
               <div style={{ marginBottom: "1rem" }}>
                 <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Subtext</label>
-                <RichTextEditor name="countdown_subtext" value={typeConfig.subtext || ""} placeholder="Subtext" onChange={() => setTimeout(updateEditPreview, 50)} minHeight={50} />
+                <RichTextEditor name="countdown_subtext" value={typeConfig.subtext || ""} placeholder="Subtext" onChange={() => setTimeout(updateEditPreview, 0)} minHeight={50} />
               </div>
               <MediaLibraryPicker name="countdown_bg_image" label="Background Image" mediaFiles={mediaFiles} defaultValue={fieldMap.desktop_banner || ""} onSelect={() => setTimeout(updateEditPreview, 50)} />
               <div className="data-field-row" style={{ display: "flex", gap: "15px", marginBottom: "1rem" }}>
@@ -1801,11 +1801,11 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
               <MediaLibraryPicker name="image_with_text_image" label="Image" mediaFiles={mediaFiles} defaultValue={fieldMap.desktop_banner || ""} onSelect={() => setTimeout(updateEditPreview, 50)} />
               <div style={{ marginBottom: "1rem" }}>
                 <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Headline</label>
-                <RichTextEditor name="image_with_text_headline" value={typeConfig.headline || ""} placeholder="Headline" onChange={() => setTimeout(updateEditPreview, 50)} minHeight={50} />
+                <RichTextEditor name="image_with_text_headline" value={typeConfig.headline || ""} placeholder="Headline" onChange={() => setTimeout(updateEditPreview, 0)} minHeight={50} />
               </div>
               <div style={{ marginBottom: "1rem" }}>
                 <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Description</label>
-                <RichTextEditor name="image_with_text_description" value={typeConfig.description || ""} placeholder="Description" onChange={() => setTimeout(updateEditPreview, 50)} minHeight={80} />
+                <RichTextEditor name="image_with_text_description" value={typeConfig.description || ""} placeholder="Description" onChange={() => setTimeout(updateEditPreview, 0)} minHeight={80} />
               </div>
               <div style={{ marginBottom: "1rem" }}>
                 <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Button Text</label>
@@ -1846,11 +1846,11 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
               <MediaLibraryPicker name="video_file" label="Or video from Shopify" mediaFiles={videoFiles} defaultValue={fieldMap.desktop_banner || ""} onSelect={() => setTimeout(updateEditPreview, 50)} />
               <div style={{ marginBottom: "1rem" }}>
                 <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Headline</label>
-                <RichTextEditor name="video_headline" value={typeConfig.headline || ""} placeholder="Headline" onChange={() => setTimeout(updateEditPreview, 50)} minHeight={50} />
+                <RichTextEditor name="video_headline" value={typeConfig.headline || ""} placeholder="Headline" onChange={() => setTimeout(updateEditPreview, 0)} minHeight={50} />
               </div>
               <div style={{ marginBottom: "1rem" }}>
                 <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Description</label>
-                <RichTextEditor name="video_description" value={typeConfig.description || ""} placeholder="Description" onChange={() => setTimeout(updateEditPreview, 50)} minHeight={60} />
+                <RichTextEditor name="video_description" value={typeConfig.description || ""} placeholder="Description" onChange={() => setTimeout(updateEditPreview, 0)} minHeight={60} />
               </div>
               <div style={{ marginBottom: "1rem" }}>
                 <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Button Text</label>
@@ -1867,11 +1867,11 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
               <MediaLibraryPicker name="promo_card_image" label="Image" mediaFiles={mediaFiles} defaultValue={fieldMap.desktop_banner || ""} onSelect={() => setTimeout(updateEditPreview, 50)} />
               <div style={{ marginBottom: "1rem" }}>
                 <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Title</label>
-                <RichTextEditor name="promo_card_title" value={typeConfig.title || ""} placeholder="Promo title" onChange={() => setTimeout(updateEditPreview, 50)} minHeight={50} />
+                <RichTextEditor name="promo_card_title" value={typeConfig.title || ""} placeholder="Promo title" onChange={() => setTimeout(updateEditPreview, 0)} minHeight={50} />
               </div>
               <div style={{ marginBottom: "1rem" }}>
                 <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Description</label>
-                <RichTextEditor name="promo_card_description" value={typeConfig.description || ""} placeholder="Description" onChange={() => setTimeout(updateEditPreview, 50)} minHeight={60} />
+                <RichTextEditor name="promo_card_description" value={typeConfig.description || ""} placeholder="Description" onChange={() => setTimeout(updateEditPreview, 0)} minHeight={60} />
               </div>
               <div style={{ marginBottom: "1rem" }}>
                 <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>CTA Link</label>
