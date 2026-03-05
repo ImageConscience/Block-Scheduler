@@ -79,11 +79,26 @@ export default function RichTextEditor({ name, value = "", placeholder, onChange
         <button type="button" onClick={() => execCmd("italic")} title="Italic" style={btnStyle}>
           <em>I</em>
         </button>
+        <button type="button" onClick={() => execCmd("underline")} title="Underline" style={btnStyle}>
+          <u>U</u>
+        </button>
         <button type="button" onClick={() => execCmd("formatBlock", "h1")} title="Heading 1" style={btnStyle}>
           H1
         </button>
         <button type="button" onClick={() => execCmd("formatBlock", "h2")} title="Heading 2" style={btnStyle}>
           H2
+        </button>
+        <button type="button" onClick={() => execCmd("formatBlock", "h3")} title="Heading 3" style={btnStyle}>
+          H3
+        </button>
+        <button type="button" onClick={() => execCmd("formatBlock", "h4")} title="Heading 4" style={btnStyle}>
+          H4
+        </button>
+        <button type="button" onClick={() => execCmd("formatBlock", "h5")} title="Heading 5" style={btnStyle}>
+          H5
+        </button>
+        <button type="button" onClick={() => execCmd("formatBlock", "h6")} title="Heading 6" style={btnStyle}>
+          H6
         </button>
         <button type="button" onClick={() => execCmd("formatBlock", "p")} title="Paragraph" style={btnStyle}>
           P

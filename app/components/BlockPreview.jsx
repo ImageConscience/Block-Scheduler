@@ -253,25 +253,41 @@ export default function BlockPreview({ blockType, data = {}, mediaFiles = [], vi
           </div>
         </div>
       )}
-      {blockType === "image_with_text" && (
-        <div style={{
-          ...previewStyles.iwt,
-          flexDirection: isMobile ? "column" : (data.image_with_text_layout === "image_right" ? "row-reverse" : "row"),
-        }}>
-          <div style={{ flex: 1, minWidth: 0, minHeight: isMobile ? 120 : 80 }}>
-            {imgUrl ? (
-              <img src={imgUrl} alt="" style={{ width: "100%", height: isMobile ? 120 : 80, objectFit: imgFit, borderRadius: "4px" }} />
-            ) : (
-              <div style={{ width: "100%", height: isMobile ? 120 : 80, backgroundColor: "#e1e3e5", borderRadius: "4px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", color: "#6d7175" }}>Image</div>
-            )}
+      {blockType === "image_with_text" && (() => {
+        const splitPct = Math.min(90, Math.max(10, Number(data.image_split_percent) || 50));
+        const imgPct = splitPct;
+        const textPct = 100 - splitPct;
+        const isImageRight = data.image_with_text_layout === "image_right";
+        const imgFlex = isMobile ? undefined : `0 0 ${imgPct}%`;
+        const textFlex = isMobile ? undefined : `0 0 ${textPct}%`;
+        return (
+          <div style={{
+            ...previewStyles.iwt,
+            flexDirection: isMobile ? "column" : (isImageRight ? "row-reverse" : "row"),
+            alignItems: isMobile ? "stretch" : "stretch",
+          }}>
+            <div style={{
+              flex: imgFlex,
+              minWidth: isMobile ? 0 : undefined,
+              width: isMobile ? "100%" : undefined,
+              overflow: "hidden",
+              display: "flex",
+              alignSelf: "stretch",
+            }}>
+              {imgUrl ? (
+                <img src={imgUrl} alt="" style={{ width: "100%", height: isMobile ? 140 : "100%", minHeight: isMobile ? 140 : 80, objectFit: imgFit, objectPosition: "center", borderRadius: "4px", display: "block" }} />
+              ) : (
+                <div style={{ width: "100%", height: isMobile ? 140 : 100, minHeight: 100, backgroundColor: "#e1e3e5", borderRadius: "4px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", color: "#6d7175" }}>Image</div>
+              )}
+            </div>
+            <div style={{ flex: textFlex, minWidth: 0, textAlign, padding: "16px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+              {data.image_with_text_headline && <div style={{ ...previewStyles.headline, color: headColor || "#333" }}>{renderHtml(data.image_with_text_headline)}</div>}
+              {data.image_with_text_description && <div style={{ ...previewStyles.description, color: descColor || "#6d7175" }}>{renderHtml(data.image_with_text_description)}</div>}
+              {data.image_with_text_button_text && <span className="theme-stream__button" style={previewStyles.button}>{data.image_with_text_button_text}</span>}
+            </div>
           </div>
-          <div style={{ flex: 1, minWidth: 0, textAlign }}>
-            {data.image_with_text_headline && <div style={{ ...previewStyles.headline, color: headColor || "#333" }}>{renderHtml(data.image_with_text_headline)}</div>}
-            {data.image_with_text_description && <div style={{ ...previewStyles.description, color: descColor || "#6d7175" }}>{renderHtml(data.image_with_text_description)}</div>}
-            {data.image_with_text_button_text && <span className="theme-stream__button" style={previewStyles.button}>{data.image_with_text_button_text}</span>}
-          </div>
-        </div>
-      )}
+        );
+      })()}
       {blockType === "background_video" && (
         <div style={{ position: "relative", minHeight: bannerMinHeight ?? 200, borderRadius: "6px", overflow: "hidden", backgroundColor: "#1a1a1a" }}>
           {videoUrl ? (

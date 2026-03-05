@@ -103,6 +103,7 @@
               {% assign selected_iwt_image = entry.desktop_banner %}
               {% assign selected_iwt_layout = tc.layout | default: 'image_left' %}
               {% assign selected_iwt_link = tc.button_link %}
+              {% assign selected_iwt_split = tc.image_split_percent | default: 50 %}
               {% assign selected_video_url = tc.video_url %}
               {% assign selected_video_file = tc.video_file %}
               {% if tc.video_file != blank %}{% assign selected_video_file_ref = entry.desktop_banner %}{% endif %}
@@ -280,10 +281,10 @@
             <div class="theme-stream__banner-content theme-stream__banner-content--desktop theme-stream__banner-content--v-{{ vertical_alignment }} theme-stream__banner-content--align-{{ content_alignment_desktop }}{% if overlay_opacity == 0 %} theme-stream__banner-content--no-overlay{% endif %}" style="--overlay-color: {{ overlay_color }}; --overlay-opacity: {{ overlay_opacity }};">
               <div class="theme-stream__content-inner">
                 {% if selected_title != blank %}
-                  <h2 class="theme-stream__title theme-stream__title--overlay" data-html="{{ selected_title | escape }}"></h2>
+                  <div class="theme-stream__title theme-stream__title--overlay" data-html="{{ selected_title | escape }}"></div>
                 {% endif %}
                 {% if selected_description != blank %}
-                  <p class="theme-stream__description theme-stream__description--overlay" data-html="{{ selected_description | escape }}"></p>
+                  <div class="theme-stream__description theme-stream__description--overlay" data-html="{{ selected_description | escape }}"></div>
                 {% endif %}
                 {% if selected_button_text != blank %}
                   <span class="button theme-stream__button theme-stream__button--overlay">{{ selected_button_text }}</span>
@@ -300,10 +301,10 @@
               <div class="theme-stream__banner-content theme-stream__banner-content--mobile theme-stream__banner-content--v-{{ vertical_alignment }} theme-stream__banner-content--align-{{ content_alignment_mobile }}{% if overlay_opacity == 0 %} theme-stream__banner-content--no-overlay{% endif %}" style="--overlay-color: {{ overlay_color }}; --overlay-opacity: {{ overlay_opacity }};">
                 <div class="theme-stream__content-inner">
                   {% if selected_title != blank %}
-                    <h2 class="theme-stream__title theme-stream__title--overlay" data-html="{{ selected_title | escape }}"></h2>
+                    <div class="theme-stream__title theme-stream__title--overlay" data-html="{{ selected_title | escape }}"></div>
                   {% endif %}
                   {% if selected_description != blank %}
-                    <p class="theme-stream__description theme-stream__description--overlay" data-html="{{ selected_description | escape }}"></p>
+                    <div class="theme-stream__description theme-stream__description--overlay" data-html="{{ selected_description | escape }}"></div>
                   {% endif %}
                   {% if selected_button_text != blank %}
                     <span class="button theme-stream__button theme-stream__button--overlay">{{ selected_button_text }}</span>
@@ -317,10 +318,10 @@
         {% if mobile_content_below %}
           <div class="theme-stream__content-below theme-stream__content-below--mobile-only theme-stream__content-below--align-{{ content_alignment_mobile }}">
             {% if selected_title != blank %}
-              <h2 class="theme-stream__title theme-stream__title--below" data-html="{{ selected_title | escape }}"></h2>
+              <div class="theme-stream__title theme-stream__title--below" data-html="{{ selected_title | escape }}"></div>
             {% endif %}
             {% if selected_description != blank %}
-              <p class="theme-stream__description theme-stream__description--below" data-html="{{ selected_description | escape }}"></p>
+              <div class="theme-stream__description theme-stream__description--below" data-html="{{ selected_description | escape }}"></div>
             {% endif %}
             {% if selected_button_text != blank %}
               <span class="button theme-stream__button theme-stream__button--below">{{ selected_button_text }}</span>
@@ -368,8 +369,8 @@
         {% if selected_overlay_opacity == nil or selected_overlay_opacity == '' %}{% assign coll_overlay_raw = 50 %}{% else %}{% assign coll_overlay_raw = selected_overlay_opacity %}{% endif %}
         {% assign coll_overlay_opacity = coll_overlay_raw | divided_by: 100.0 %}
         <div class="theme-stream__banner-content theme-stream__banner-content--v-{{ coll_vertical_alignment }} theme-stream__banner-content--align-{{ coll_content_align }}{% if coll_overlay_opacity == 0 %} theme-stream__banner-content--no-overlay{% endif %}" style="--overlay-color: {{ coll_overlay_color }}; --overlay-opacity: {{ coll_overlay_opacity }};">
-          <h2 class="theme-stream__title theme-stream__title--overlay" data-html="{{ coll_title | escape }}"></h2>
-          {% if selected_description != blank %}<p class="theme-stream__description theme-stream__description--overlay" data-html="{{ selected_description | escape }}"></p>{% endif %}
+          <div class="theme-stream__title theme-stream__title--overlay" data-html="{{ coll_title | escape }}"></div>
+          {% if selected_description != blank %}<div class="theme-stream__description theme-stream__description--overlay" data-html="{{ selected_description | escape }}"></div>{% endif %}
           {% if selected_button_text != blank %}<span class="button theme-stream__button theme-stream__button--overlay">{{ selected_button_text }}</span>{% endif %}
         </div>
       </div>
@@ -391,11 +392,11 @@
           </div>
         {% endif %}
         <div class="theme-stream__countdown-inner">
-          {% if selected_countdown_headline != blank %}<h2 class="theme-stream__countdown-headline" data-html="{{ selected_countdown_headline | escape }}"></h2>{% endif %}
+          {% if selected_countdown_headline != blank %}<div class="theme-stream__countdown-headline" data-html="{{ selected_countdown_headline | escape }}"></div>{% endif %}
           <div class="theme-stream__countdown-timer" data-target="{{ selected_countdown_target }}">
             <span data-days>0</span>d <span data-hours>0</span>h <span data-mins>0</span>m <span data-secs>0</span>s
           </div>
-          {% if selected_countdown_subtext != blank %}<p class="theme-stream__countdown-subtext" data-html="{{ selected_countdown_subtext | escape }}"></p>{% endif %}
+          {% if selected_countdown_subtext != blank %}<div class="theme-stream__countdown-subtext" data-html="{{ selected_countdown_subtext | escape }}"></div>{% endif %}
           {% if selected_countdown_btn != blank %}<span class="button theme-stream__button">{{ selected_countdown_btn }}</span>{% endif %}
         </div>
       </div>
@@ -409,11 +410,15 @@
     {% assign iwt_btn_pad_h = selected_button_padding_horizontal | default: 30 %}
     {% assign iwt_head_color = selected_headline_color | default: '#34495e' %}
     {% assign iwt_desc_color = selected_desc_color | default: '#6d7175' %}
-    <div class="theme-stream__iwt theme-stream__iwt--{{ selected_iwt_layout }}" style="--btn-bg: {{ iwt_btn_bg }}; --btn-color: {{ iwt_btn_color }}; --btn-radius: {{ iwt_btn_radius }}px; --btn-pad: {{ iwt_btn_pad }}px; --btn-pad-h: {{ iwt_btn_pad_h }}px; --head-color: {{ iwt_head_color }}; --desc-color: {{ iwt_desc_color }};">
+    {% assign iwt_img_pct = selected_iwt_split | default: 50 | plus: 0 %}
+    {% if iwt_img_pct < 10 %}{% assign iwt_img_pct = 10 %}{% endif %}
+    {% if iwt_img_pct > 90 %}{% assign iwt_img_pct = 90 %}{% endif %}
+    {% assign iwt_text_pct = 100 | minus: iwt_img_pct %}
+    <div class="theme-stream__iwt theme-stream__iwt--{{ selected_iwt_layout }}" style="--btn-bg: {{ iwt_btn_bg }}; --btn-color: {{ iwt_btn_color }}; --btn-radius: {{ iwt_btn_radius }}px; --btn-pad: {{ iwt_btn_pad }}px; --btn-pad-h: {{ iwt_btn_pad_h }}px; --head-color: {{ iwt_head_color }}; --desc-color: {{ iwt_desc_color }}; --iwt-img-pct: {{ iwt_img_pct }}%; --iwt-text-pct: {{ iwt_text_pct }}%;">
       {% if selected_iwt_layout == 'image_right' %}
         <div class="theme-stream__iwt-text">
-          {% if selected_title != blank %}<h2 class="theme-stream__title" data-html="{{ selected_title | escape }}"></h2>{% endif %}
-          {% if selected_description != blank %}<p class="theme-stream__description" data-html="{{ selected_description | escape }}"></p>{% endif %}
+          {% if selected_title != blank %}<div class="theme-stream__title" data-html="{{ selected_title | escape }}"></div>{% endif %}
+          {% if selected_description != blank %}<div class="theme-stream__description" data-html="{{ selected_description | escape }}"></div>{% endif %}
           {% if selected_button_text != blank %}<a href="{{ iwt_link }}" class="button theme-stream__button">{{ selected_button_text }}</a>{% endif %}
         </div>
       {% endif %}
@@ -422,8 +427,8 @@
       </div>
       {% if selected_iwt_layout == 'image_left' %}
         <div class="theme-stream__iwt-text">
-          {% if selected_title != blank %}<h2 class="theme-stream__title" data-html="{{ selected_title | escape }}"></h2>{% endif %}
-          {% if selected_description != blank %}<p class="theme-stream__description" data-html="{{ selected_description | escape }}"></p>{% endif %}
+          {% if selected_title != blank %}<div class="theme-stream__title" data-html="{{ selected_title | escape }}"></div>{% endif %}
+          {% if selected_description != blank %}<div class="theme-stream__description" data-html="{{ selected_description | escape }}"></div>{% endif %}
           {% if selected_button_text != blank %}<a href="{{ iwt_link }}" class="button theme-stream__button">{{ selected_button_text }}</a>{% endif %}
         </div>
       {% endif %}
@@ -449,8 +454,8 @@
           <source src="{{ vid_src }}" type="video/mp4">
         </video>
         <div class="theme-stream__video-overlay" style="background-color: rgba(0,0,0,{{ selected_video_overlay | divided_by: 100.0 }}); --btn-bg: {{ vid_btn_bg }}; --btn-color: {{ vid_btn_color }}; --btn-radius: {{ vid_btn_radius }}px; --btn-pad: {{ vid_btn_pad }}px; --btn-pad-h: {{ vid_btn_pad_h }}px; --head-color: {{ vid_head_color }}; --desc-color: {{ vid_desc_color }};">
-          {% if selected_title != blank %}<h2 class="theme-stream__video-title" data-html="{{ selected_title | escape }}"></h2>{% endif %}
-          {% if selected_description != blank %}<p class="theme-stream__video-desc" data-html="{{ selected_description | escape }}"></p>{% endif %}
+          {% if selected_title != blank %}<div class="theme-stream__video-title" data-html="{{ selected_title | escape }}"></div>{% endif %}
+          {% if selected_description != blank %}<div class="theme-stream__video-desc" data-html="{{ selected_description | escape }}"></div>{% endif %}
           {% if selected_button_text != blank and selected_target_url != blank %}<a href="{{ selected_target_url }}" class="button theme-stream__button">{{ selected_button_text }}</a>{% endif %}
         </div>
       </div>
@@ -469,8 +474,8 @@
           {{ selected_promo_image | image_url: width: 600 | image_tag: alt: selected_promo_title, loading: 'lazy', class: 'theme-stream__promo-img' }}
         </div>
         <div class="theme-stream__promo-body">
-          {% if selected_promo_title != blank %}<h3 class="theme-stream__promo-title" data-html="{{ selected_promo_title | escape }}"></h3>{% endif %}
-          {% if selected_promo_desc != blank %}<p class="theme-stream__promo-desc" data-html="{{ selected_promo_desc | escape }}"></p>{% endif %}
+          {% if selected_promo_title != blank %}<div class="theme-stream__promo-title" data-html="{{ selected_promo_title | escape }}"></div>{% endif %}
+          {% if selected_promo_desc != blank %}<div class="theme-stream__promo-desc" data-html="{{ selected_promo_desc | escape }}"></div>{% endif %}
           {% if selected_promo_btn != blank %}<span class="button theme-stream__button">{{ selected_promo_btn }}</span>{% endif %}
         </div>
       </div>
@@ -985,13 +990,13 @@
   }
 
   .theme-stream__iwt-text {
-    flex: 1;
+    flex: 0 0 var(--iwt-text-pct, 50%);
     min-width: 200px;
     padding: 20px;
   }
 
   .theme-stream__iwt-img {
-    flex: 1;
+    flex: 0 0 var(--iwt-img-pct, 50%);
     min-width: 200px;
   }
 
@@ -1072,6 +1077,10 @@
   @media (max-width: 767px) {
     .theme-stream__iwt {
       flex-direction: column;
+    }
+    .theme-stream__iwt-text,
+    .theme-stream__iwt-img {
+      flex: 1 1 auto;
     }
     .theme-stream__iwt--image_right .theme-stream__iwt-text {
       order: -1;

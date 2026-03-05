@@ -564,6 +564,11 @@ export default function ThemeStreamPage() {
                       <option value="image_right">Image Right</option>
                     </select>
                   </div>
+                  <div style={{ marginBottom: "0.5rem" }}>
+                    <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500", fontSize: "0.8125rem" }}>Image width % (desktop)</label>
+                    <input type="number" name="image_split_percent" min={10} max={90} step={5} defaultValue={50} placeholder="50" style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+                    <p style={{ margin: "0.25rem 0 0", fontSize: "0.75rem", color: "#6d7175" }}>Split between image and text. 50 = 50/50. Mobile stays stacked.</p>
+                  </div>
                     </>
                   )}
                   {formBlockType === "background_video" && (
@@ -1433,6 +1438,7 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
         imageWithTextButtonText: formData.get("image_with_text_button_text") || "",
         imageWithTextButtonLink: formData.get("image_with_text_button_link") || "",
         imageWithTextLayout: formData.get("image_with_text_layout") || "image_left",
+        imageSplitPercent: formData.get("image_split_percent") || "50",
       };
     }
     if (blockType === "background_video") {
@@ -1805,6 +1811,11 @@ function EditEntryModal({ entry, mediaFiles = [], videoFiles = [], blockTypes = 
                   <option value="image_left">Image Left</option>
                   <option value="image_right">Image Right</option>
                 </select>
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>Image width % (desktop)</label>
+                <input type="number" name="image_split_percent" min={10} max={90} step={5} defaultValue={typeConfig.image_split_percent ?? 50} placeholder="50" style={{ width: "100%", padding: "0.5rem", border: "1px solid #c9cccf", borderRadius: "4px", boxSizing: "border-box" }} />
+                <p style={{ margin: "0.25rem 0 0", fontSize: "0.75rem", color: "#6d7175" }}>Split between image and text. 50 = 50/50. Mobile stays stacked.</p>
               </div>
             </>
           )}
