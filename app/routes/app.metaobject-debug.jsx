@@ -1,7 +1,7 @@
 /**
  * Debug route: GET /app/metaobject-debug
  * Returns metaobject definition info to diagnose theme block Position picker.
- * Remove or protect in production.
+ * Disabled in production for App Store compliance.
  */
 import { json } from "../utils/responses.server";
 import { useLoaderData } from "react-router";
@@ -10,6 +10,9 @@ import { authenticate } from "../shopify.server";
 const CLIENT_ID = process.env.SHOPIFY_API_KEY || "";
 
 export const loader = async ({ request }) => {
+  if (process.env.NODE_ENV === "production") {
+    return new Response(null, { status: 404 });
+  }
   const { admin } = await authenticate.admin(request);
 
   const results = {

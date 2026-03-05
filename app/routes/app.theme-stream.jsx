@@ -1277,12 +1277,6 @@ export default function ThemeStreamPage() {
         )}
       </s-section>
 
-      <p style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "#6d7175" }}>
-        <a href="/app/metaobject-debug" target="_blank" rel="noopener noreferrer" style={{ color: "#667eea" }}>
-          Metaobject debug (theme block Position picker)
-        </a>
-      </p>
-
       {/* Position Add/Edit Modal */}
       {positionModalOpen && (
         <div

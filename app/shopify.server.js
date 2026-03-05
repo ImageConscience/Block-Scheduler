@@ -9,6 +9,7 @@ import prisma from "./db.server";
 import { ensureMetaobjectDefinition } from "./services/metaobjects.server";
 import { logger } from "./utils/logger.server";
 
+// ApiVersion.January26 = 2026-01 (matches shopify.app.toml webhooks)
 const shopify = shopifyApp({
   apiKey: process.env.SHOPIFY_API_KEY,
   apiSecretKey: process.env.SHOPIFY_API_SECRET || "",

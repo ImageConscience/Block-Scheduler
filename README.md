@@ -142,7 +142,7 @@ When you reach the step for [setting up environment variables](https://shopify.d
 - `SHOPIFY_API_KEY` = your Shopify app Client ID
 - `SHOPIFY_API_SECRET` = your Shopify app Client Secret
 - `SHOPIFY_APP_URL` = your Railway HTTPS URL (e.g., `https://theme-stream-production.up.railway.app`)
-- `SCOPES` = `read_metaobject_definitions,write_metaobject_definitions,read_metaobjects,write_metaobjects,write_products,unauthenticated_read_metaobjects,read_files,write_files,read_content,write_content`
+- `SCOPES` = `read_metaobject_definitions,write_metaobject_definitions,read_metaobjects,write_metaobjects,unauthenticated_read_metaobjects,read_files,write_files,read_content,write_content`
 - `BILLING_PLAN_STARTER_NAME` = Plan label for Starter (default: `Starter`)
 - `BILLING_PRICE_STARTER` = Starter price in USD (default: `9`) — Shopify Standard only, up to 3 streams
 - `BILLING_PLAN_STREAMER_NAME` = Plan label for Streamer (default: `Streamer`)

@@ -9,19 +9,7 @@ import { addDocumentResponseHeaders } from "./shopify.server";
 
 export const streamTimeout = 5000;
 
-const NODE_ENV = process.env.NODE_ENV || "production";
-const isDevEnvironment = NODE_ENV !== "production";
-const shouldLogEntry = process.env.DEBUG_ENTRY_LOGS === "true" || isDevEnvironment;
-const entryLog = (...args) => {
-  if (shouldLogEntry) {
-    console.log(...args);
-  }
-};
-const entryWarn = (...args) => {
-  if (shouldLogEntry) {
-    console.warn(...args);
-  }
-};
+const shouldLogEntry = process.env.DEBUG_ENTRY_LOGS === "true";
 const entryError = (...args) => {
   if (shouldLogEntry) {
     console.error(...args);
@@ -40,35 +28,19 @@ export default async function handleRequest(
                           acceptHeader.includes("application/json") || 
                           (!acceptHeader.includes("text/html") && request.method !== "GET");
   
-  // Log context structure to understand how React Router passes Response objects
-  entryLog("[ENTRY] Request method:", request.method);
-  entryLog("[ENTRY] Accept header:", acceptHeader);
-  entryLog("[ENTRY] Is fetcher request:", isFetcherRequest);
-  entryLog("[ENTRY] Context keys:", Object.keys(reactRouterContext || {}));
-  entryLog("[ENTRY] Response status code:", responseStatusCode);
-  entryLog("[ENTRY] Response headers:", Object.fromEntries(responseHeaders || []));
-  
   // React Router v7: Check if the context already has a Response to return
   // Actions returning Response objects should bypass HTML rendering
   // Check multiple possible locations where Response might be stored
   if (reactRouterContext) {
     // Check actionData - React Router might serialize Response data here
     if (reactRouterContext.actionData) {
-      entryLog("[ENTRY] Found actionData:", Object.keys(reactRouterContext.actionData));
-      for (const [routeId, actionData] of Object.entries(reactRouterContext.actionData)) {
-        entryLog("[ENTRY] actionData for route:", routeId, "type:", typeof actionData, "is Response:", actionData instanceof Response);
+      for (const [, actionData] of Object.entries(reactRouterContext.actionData)) {
         if (actionData instanceof Response) {
           const contentType = actionData.headers.get("content-type") || "";
-          entryLog("[ENTRY] Found Response in actionData, Content-Type:", contentType);
           if (contentType.includes("application/json")) {
-            entryLog("[ENTRY] Returning JSON Response directly from actionData");
             return actionData;
           }
         } else if (isFetcherRequest && typeof actionData === "object" && actionData !== null) {
-          // If it's a fetcher request and actionData is an object (not a Response),
-          // React Router has already serialized the Response body
-          // Return JSON directly
-          entryLog("[ENTRY] Returning serialized actionData as JSON for fetcher request");
           return new Response(JSON.stringify(actionData), {
             status: responseStatusCode || 200,
             headers: {
@@ -82,21 +54,17 @@ export default async function handleRequest(
     // Check if there's a response object directly
     if (reactRouterContext.response && reactRouterContext.response instanceof Response) {
       const contentType = reactRouterContext.response.headers.get("content-type") || "";
-      entryLog("[ENTRY] Found Response in context.response, Content-Type:", contentType);
       if (contentType.includes("application/json")) {
-        entryLog("[ENTRY] Returning JSON Response directly from context.response");
         return reactRouterContext.response;
       }
     }
     
     // Check routeData
     if (reactRouterContext.routeData) {
-      for (const [routeId, routeData] of Object.entries(reactRouterContext.routeData)) {
+      for (const [, routeData] of Object.entries(reactRouterContext.routeData)) {
         if (routeData instanceof Response) {
           const contentType = routeData.headers.get("content-type") || "";
-          entryLog("[ENTRY] Found Response in routeData:", routeId, "Content-Type:", contentType);
           if (contentType.includes("application/json")) {
-            entryLog("[ENTRY] Returning JSON Response directly from routeData");
             return routeData;
           }
         }
@@ -109,82 +77,47 @@ export default async function handleRequest(
   // We MUST bypass HTML rendering and return JSON directly.
   if (isFetcherRequest && request.method === "POST") {
     const existingContentType = responseHeaders.get("content-type");
-    entryLog("[ENTRY] Fetcher POST request detected, existing Content-Type:", existingContentType);
     // If headers indicate JSON, React Router has already processed the action response
     // We need to get the actual response body from the context
     if (existingContentType && existingContentType.includes("application/json")) {
-      entryLog("[ENTRY] JSON Content-Type detected for fetcher request - must bypass HTML rendering");
       // Try to find the action response in the context
       // React Router v7 might store it differently
       let actionResponseData = null;
       
       // Log entire context structure to find where data is stored
-      entryLog("[ENTRY] Full context structure:", JSON.stringify(Object.keys(reactRouterContext || {})).substring(0, 500));
-      
-      // Check all possible locations where React Router might store action data
-      entryLog("[ENTRY] Checking actionData existence:", !!reactRouterContext?.actionData);
       if (reactRouterContext?.actionData) {
-        entryLog("[ENTRY] actionData keys:", Object.keys(reactRouterContext.actionData));
-        for (const [routeId, data] of Object.entries(reactRouterContext.actionData)) {
-          entryLog("[ENTRY] Found actionData for route:", routeId, "data type:", typeof data, "is Response:", data instanceof Response);
+        for (const [, data] of Object.entries(reactRouterContext.actionData)) {
           if (data && typeof data === "object" && !(data instanceof Response)) {
-            entryLog("[ENTRY] actionData content:", JSON.stringify(data).substring(0, 300));
             actionResponseData = data;
-            entryLog("[ENTRY] Using actionData from route:", routeId);
             break;
           }
         }
-      } else {
-        entryLog("[ENTRY] No actionData found in context");
-        
-        // Check if React Router stored it in staticHandlerContext
-        if (reactRouterContext?.staticHandlerContext) {
-          entryLog("[ENTRY] Checking staticHandlerContext");
-          const staticContext = reactRouterContext.staticHandlerContext;
-          entryLog("[ENTRY] staticHandlerContext keys:", Object.keys(staticContext || {}));
+      }
+      if (!actionResponseData && reactRouterContext?.staticHandlerContext) {
+        const staticContext = reactRouterContext.staticHandlerContext;
           
-          // Check actionData first
-          if (staticContext?.actionData) {
-            entryLog("[ENTRY] Found actionData in staticHandlerContext:", Object.keys(staticContext.actionData));
-            for (const [routeId, data] of Object.entries(staticContext.actionData)) {
-              entryLog("[ENTRY] staticHandlerContext.actionData for route:", routeId, "type:", typeof data);
-              if (data && typeof data === "object" && !(data instanceof Response)) {
-                entryLog("[ENTRY] Found action response in staticHandlerContext.actionData:", routeId);
-                entryLog("[ENTRY] Data preview:", JSON.stringify(data).substring(0, 300));
-                actionResponseData = data;
-                break;
-              }
+        if (staticContext?.actionData) {
+          for (const [, data] of Object.entries(staticContext.actionData)) {
+            if (data && typeof data === "object" && !(data instanceof Response)) {
+              actionResponseData = data;
+              break;
             }
           }
-          
-          // Check if there's a response object directly in staticHandlerContext
-          if (!actionResponseData && staticContext?.response && staticContext.response instanceof Response) {
-            entryLog("[ENTRY] Found Response object in staticHandlerContext.response");
-            try {
-              // Try to clone and read the response body
-              const clonedResponse = staticContext.response.clone();
-              const responseText = await clonedResponse.text();
-              entryLog("[ENTRY] Response body from staticHandlerContext:", responseText.substring(0, 300));
-              try {
-                actionResponseData = JSON.parse(responseText);
-                entryLog("[ENTRY] Successfully parsed response as JSON");
-              } catch (e) {
-                entryLog("[ENTRY] Response is not JSON, cannot parse:", e.message);
-              }
-            } catch (e) {
-              entryLog("[ENTRY] Could not read response body:", e.message);
-            }
+        }
+        if (!actionResponseData && staticContext?.response instanceof Response) {
+          try {
+            const clonedResponse = staticContext.response.clone();
+            const responseText = await clonedResponse.text();
+            actionResponseData = JSON.parse(responseText);
+          } catch {
+            /* ignore */
           }
-          
-          // Also check loaderData in case action response was stored there
-          if (!actionResponseData && staticContext?.loaderData) {
-            entryLog("[ENTRY] Checking loaderData in staticHandlerContext");
-            for (const [routeId, data] of Object.entries(staticContext.loaderData)) {
-              if (data && typeof data === "object" && (data.success !== undefined || data.error !== undefined)) {
-                entryLog("[ENTRY] Found action-like data in loaderData:", routeId);
-                actionResponseData = data;
-                break;
-              }
+        }
+        if (!actionResponseData && staticContext?.loaderData) {
+          for (const [, data] of Object.entries(staticContext.loaderData)) {
+            if (data && typeof data === "object" && (data.success !== undefined || data.error !== undefined)) {
+              actionResponseData = data;
+              break;
             }
           }
         }
@@ -193,17 +126,11 @@ export default async function handleRequest(
       // Also check if there's a response body stored elsewhere in the context
       // React Router might serialize it differently
       if (!actionResponseData && reactRouterContext) {
-        // Check for any data that looks like our action response
-        for (const [key, value] of Object.entries(reactRouterContext)) {
-          if (key.includes("action") || key.includes("data")) {
-            entryLog("[ENTRY] Checking context key:", key, "type:", typeof value);
-            if (value && typeof value === "object" && !Array.isArray(value)) {
-              // Check if it looks like our JSON response (has success, error, file, etc.)
-              if (value.success !== undefined || value.error !== undefined || value.file !== undefined) {
-                actionResponseData = value;
-                entryLog("[ENTRY] Found action response data in key:", key);
-                break;
-              }
+        for (const [, value] of Object.entries(reactRouterContext)) {
+          if (value && typeof value === "object" && !Array.isArray(value)) {
+            if (value.success !== undefined || value.error !== undefined || value.file !== undefined) {
+              actionResponseData = value;
+              break;
             }
           }
         }
@@ -214,25 +141,19 @@ export default async function handleRequest(
       // The response body should be in the context, but if we can't find it,
       // we need to check if React Router stored it in matches/routeData
       if (!actionResponseData && reactRouterContext?.matches) {
-        entryLog("[ENTRY] Checking matches for action response data");
         for (const match of reactRouterContext.matches) {
           if (match.route?.module?.action && match.routeData) {
-            entryLog("[ENTRY] Checking match routeData:", Object.keys(match.routeData || {}));
-            // Check if routeData contains our action response
-            for (const [key, value] of Object.entries(match.routeData)) {
+            for (const [, value] of Object.entries(match.routeData)) {
               if (value && typeof value === "object" && (value.success !== undefined || value.error !== undefined)) {
                 actionResponseData = value;
-                entryLog("[ENTRY] Found action response in match routeData:", key);
                 break;
               }
             }
           }
         }
       }
-      
-      // If we found the data, return it as JSON
+
       if (actionResponseData) {
-        entryLog("[ENTRY] Returning action response data as JSON");
         return new Response(JSON.stringify(actionResponseData), {
           status: responseStatusCode || 200,
           headers: {
@@ -247,10 +168,6 @@ export default async function handleRequest(
       // We need to reconstruct it from what we know - but since we can't access it,
       // we should check if React Router stored the response somewhere else.
       if (!actionResponseData) {
-        entryLog("[ENTRY] JSON headers detected but no actionData found in context");
-        entryLog("[ENTRY] This means React Router has already processed the action response");
-        entryLog("[ENTRY] Checking if response was already sent or if we need to read from a different source");
-        
         // React Router v7 should have already sent the response body.
         // The fact that we're here means entry.server.jsx is being called AFTER the response was processed.
         // We should NOT render HTML - but we also can't access the original response body.
@@ -269,20 +186,14 @@ export default async function handleRequest(
         // The best approach: return a minimal response that won't break the client,
         // but log that something is wrong.
         
-        entryWarn(
-          "[ENTRY] WARNING: JSON headers detected but cannot find actionData. React Router should have already sent the response.",
-        );
-        entryWarn(
-          "[ENTRY] Returning empty success response to prevent HTML rendering.",
-        );
-        // Return a minimal success response - the client might get this instead of the real response
-        // But this is better than HTML
-        return new Response(JSON.stringify({ success: true, message: "Response already processed by React Router" }), {
-          status: responseStatusCode || 200,
-          headers: {
-            "Content-Type": "application/json; charset=utf-8",
+        if (shouldLogEntry) console.warn("[ENTRY] JSON headers but no actionData; returning 500.");
+        return new Response(
+          JSON.stringify({ success: false, error: "Request processing error" }),
+          {
+            status: 500,
+            headers: { "Content-Type": "application/json; charset=utf-8" },
           },
-        });
+        );
       }
     }
   }

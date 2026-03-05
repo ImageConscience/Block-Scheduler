@@ -464,6 +464,7 @@
       {% assign vid_desc_color = selected_desc_color | default: '#ffffff' %}
       <div class="theme-stream__video-wrap"{% if banner_min_d != 'auto' %} style="min-height: {{ banner_min_d }}; --banner-fit: {{ img_fit_d }};"{% endif %}>
         <video class="theme-stream__video" autoplay muted loop playsinline>
+          {% # theme-check-disable-next-line RemoteAsset %}
           <source src="{{ vid_src }}" type="video/mp4">
         </video>
         <div class="theme-stream__video-overlay" style="background-color: rgba(0,0,0,{{ selected_video_overlay | divided_by: 100.0 }}); --btn-bg: {{ vid_btn_bg }}; --btn-color: {{ vid_btn_color }}; --btn-radius: {{ vid_btn_radius }}px; --btn-pad: {{ vid_btn_pad }}px; --btn-pad-h: {{ vid_btn_pad_h }}px; --head-color: {{ vid_head_color }}; --desc-color: {{ vid_desc_color }};">
