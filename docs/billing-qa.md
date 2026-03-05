@@ -1,11 +1,10 @@
 # Billing QA Checklist
 
-> Run this sequence after flipping the Partner app to **App Store** distribution and before disabling `BILLING_TEST`. Keep the app installed on a development store until you are satisfied with the results.
+> Run this sequence after flipping the Partner app to **App Store** distribution and before enabling `BILLING_ENABLED`. Keep the app installed on a development store until you are satisfied with the results.
 
 ## Pre-flight
 
 - [ ] Confirm the Railway deployment has the latest code and env vars (`SHOPIFY_APP_URL`, `BILLING_*`, `BILLING_ENABLED`).
-- [ ] Ensure `BILLING_TEST=true` for development stores; note the value you plan to use in production.
 - [ ] Update the Partner app listing (pricing section, free-trial copy) to match the values above.
 
 ## Test cases
@@ -26,6 +25,5 @@
 
 ## Post-test
 
-- [ ] Leave `BILLING_TEST=true` for development stores; document the value swap (`false`) required in production.
 - [ ] Update the support docs / release notes with the plan name, amount, trial length, and expected redirect URL.
-- [ ] Once approved, deploy with `BILLING_ENABLED=true` and `BILLING_TEST=false` for production.
+- [ ] Once approved, deploy with `BILLING_ENABLED=true` for production.

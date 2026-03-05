@@ -2,7 +2,6 @@ const BILLING_ENABLED = process.env.BILLING_ENABLED !== "false";
 const CURRENCY_CODE = (process.env.BILLING_CURRENCY || "USD").toUpperCase();
 const INTERVAL = (process.env.BILLING_INTERVAL || "EVERY_30_DAYS").toUpperCase();
 const TRIAL_DAYS = Number.parseInt(process.env.BILLING_TRIAL_DAYS ?? "7", 10);
-const TEST_MODE = process.env.BILLING_TEST === "true" || process.env.NODE_ENV !== "production";
 const APP_BASE_URL = process.env.BILLING_RETURN_URL || process.env.SHOPIFY_APP_URL;
 
 /** Plan keys: starter (Standard only), streamer (Standard only), streamer_plus (Plus only) */
@@ -153,11 +152,6 @@ export async function checkSubscriptionStatus(admin) {
     result.partnerDevelopment = shopPlan.partnerDevelopment ?? false;
     result.shopifyPlus = shopPlan.shopifyPlus ?? false;
 
-    if (result.partnerDevelopment && !TEST_MODE) {
-      console.log("[billing] Development store; skipping billing (use BILLING_TEST=true to test billing on dev stores).");
-      result.hasActive = true;
-      return result;
-    }
   } catch (planError) {
     console.warn("[billing] Could not check shop plan:", planError?.message);
   }
@@ -231,13 +225,6 @@ export async function createSubscriptionForPlan(admin, request, planKey) {
     const planResponse = await admin.graphql(SHOP_PLAN_QUERY);
     const planJson = await planResponse.json();
     const shopifyPlus = planJson?.data?.shop?.plan?.shopifyPlus ?? false;
-    const partnerDevelopment = planJson?.data?.shop?.plan?.partnerDevelopment ?? false;
-
-    if (partnerDevelopment && !TEST_MODE) {
-      throw new Error(
-        "Billing is disabled for development stores. Set BILLING_TEST=true to test billing on dev stores.",
-      );
-    }
 
     if (planKey === "streamer_plus" && !shopifyPlus) {
       throw new Error("[billing] Streamer Plus is only available for Shopify Plus stores.");
@@ -272,7 +259,7 @@ export async function createSubscriptionForPlan(admin, request, planKey) {
         currencyCode: CURRENCY_CODE,
         interval: INTERVAL,
         returnUrl: returnUrl.toString(),
-        test: TEST_MODE,
+        test: false,
       },
     });
     const creationJson = await creationResponse.json();

@@ -152,7 +152,6 @@ When you reach the step for [setting up environment variables](https://shopify.d
 - `BILLING_CURRENCY` = ISO currency code for billing (e.g., `USD`)
 - `BILLING_INTERVAL` = Billing interval (default: `EVERY_30_DAYS`)
 - `BILLING_TRIAL_DAYS` = Number of trial days (set to `7` for a one-week trial)
-- `BILLING_TEST` = `false` in production (`true` on development stores to avoid real charges)
 - `DATABASE_URL` = Railway Postgres connection URL
 - `NODE_ENV` = `production`
 - Optional: `SHOP_CUSTOM_DOMAIN`
@@ -168,10 +167,10 @@ To keep production logs tidy, all incidental logging is disabled unless one of t
 
 ### Billing QA checklist
 
-Before enabling **App Store** distribution and turning off `BILLING_TEST`, run through the steps in [`docs/billing-qa.md`](docs/billing-qa.md). The checklist covers:
+Before enabling **App Store** distribution and turning on `BILLING_ENABLED`, run through the steps in [`docs/billing-qa.md`](docs/billing-qa.md). The checklist covers:
 
 1. Verifying environment variables and return URLs.
-2. Installing on a development store (`BILLING_TEST=true`) and confirming the billing confirmation screen appears.
+2. Installing on a development store and confirming the billing confirmation screen appears.
 3. Cancelling the test charge and ensuring the app redirects back to billing on re-entry.
 4. Re-accepting the charge to confirm normal behaviour and noting the steps required when switching to paid mode.
 
