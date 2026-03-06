@@ -12,12 +12,6 @@ import { createRequestHandler } from "@react-router/express";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const WEBHOOK_PATHS = [
-  "/webhooks/app/uninstalled",
-  "/webhooks/app/scopes_update",
-  "/webhooks/compliance",
-];
-
 async function main() {
   const buildPath = path.resolve(process.argv[2] || "./build/server/index.js");
   const build = await import(pathToFileURL(buildPath).href);
@@ -37,22 +31,31 @@ async function main() {
   app.use(morgan("tiny"));
 
   // Webhook routes: raw body only (no JSON parsing) - required for HMAC verification.
-  // Create a req-like stream so createRequestHandler gets the raw body.
+  // Match both /webhooks/* and /app/theme-stream/webhooks/* (Shopify sends to latter when app URL includes path)
+  const pathRegex = /^\/(app\/theme-stream)?\/webhooks\/(app\/uninstalled|app\/scopes_update|compliance)$/;
   const { Readable } = await import("stream");
   app.post(
-    WEBHOOK_PATHS,
+    pathRegex,
     express.raw({ type: () => true }), // Accept any content-type; must preserve exact bytes for HMAC
     async (req, res, next) => {
+      const debugWebhooks = process.env.DEBUG_WEBHOOKS === "true";
+      if (debugWebhooks) {
+        console.log("[webhook]", req.path, "bodyLen:", req.body?.length ?? 0, "hasHmac:", !!req.get?.("x-shopify-hmac-sha256"));
+      }
       try {
         // Preserve exact bytes - no string conversion (breaks HMAC)
         const rawBuffer = req.body instanceof Buffer ? req.body : Buffer.from(String(req.body ?? ""), "utf8");
         const bodyStream = Readable.from([rawBuffer]);
+        // Rewrite path so React Router matches: /app/theme-stream/webhooks/x -> /webhooks/x
+        const originalUrl = req.originalUrl || req.url;
+        const rewrittenUrl = originalUrl.replace(/^\/app\/theme-stream/, "") || "/";
         const reqWithRawBody = Object.assign(bodyStream, {
           method: req.method,
           get: req.get?.bind(req),
           hostname: req.hostname,
           protocol: req.protocol,
-          originalUrl: req.originalUrl,
+          originalUrl: rewrittenUrl,
+          url: rewrittenUrl,
           headers: req.headers,
           socket: req.socket,
           on: bodyStream.on?.bind(bodyStream),
@@ -61,8 +64,16 @@ async function main() {
           build: buildModule,
           mode: process.env.NODE_ENV,
         });
-        await handler(reqWithRawBody, res, next);
+        await handler(reqWithRawBody, res, (err) => {
+          if (debugWebhooks && err) {
+            console.error("[webhook] Handler error:", err?.message ?? err);
+          }
+          next(err);
+        });
       } catch (err) {
+        if (debugWebhooks) {
+          console.error("[webhook] Error:", err?.message ?? err);
+        }
         next(err);
       }
     }
