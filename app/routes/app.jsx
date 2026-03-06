@@ -18,7 +18,15 @@ export default function App() {
       <s-app-nav>
         <s-link href="/app/theme-stream">Streams</s-link>
       </s-app-nav>
-      <Outlet />
+      <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+        <div style={{ flex: 1 }}>
+          <Outlet />
+        </div>
+        <footer style={{ padding: "0.75rem 1rem", fontSize: "0.8125rem", color: "#6d7175", borderTop: "1px solid #e1e3e5" }}>
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ marginRight: "1rem", color: "inherit" }}>Privacy</a>
+          <a href="/support" target="_blank" rel="noopener noreferrer" style={{ color: "inherit" }}>Support</a>
+        </footer>
+      </div>
     </AppProvider>
   );
 }

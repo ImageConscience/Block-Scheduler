@@ -156,6 +156,7 @@ When you reach the step for [setting up environment variables](https://shopify.d
 - `NODE_ENV` = `production`
 - Optional: `SHOP_CUSTOM_DOMAIN`
 - Optional: `BILLING_ENABLED` (defaults to `true`) and `BILLING_RETURN_URL` (defaults to `SHOPIFY_APP_URL/app/theme-stream`)
+- Optional: `SUPPORT_EMAIL` (for privacy policy and support page; defaults to `support@imageconscience.com`)
 
 ### Debug logging toggles
 
