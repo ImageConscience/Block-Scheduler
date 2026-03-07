@@ -76,7 +76,7 @@ export default function BlockPreview({ blockType, data = {}, mediaFiles = [], vi
       position: "relative",
       borderRadius: "6px",
       overflow: "hidden",
-      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+      background: (heroImgUrl || imgUrl) ? "transparent" : "#e1e3e5",
     },
     heroOverlay: {
       position: "absolute",
