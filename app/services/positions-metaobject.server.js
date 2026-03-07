@@ -1,34 +1,47 @@
 /**
  * Sync BlockPosition records to theme_stream_position metaobject entries.
- * Enables the theme block to use a metaobject picker for position selection.
+ * Uses a position_handle field (not Shopify system handle) to reliably
+ * match positions, avoiding issues with Shopify auto-suffixing handles.
  */
 import { logger } from "../utils/logger.server";
 
-/** Type matches TOML [metaobjects.app.theme_stream_position] -> $app:theme_stream_position */
 const METAOBJECT_TYPE = "$app:theme_stream_position";
 
-/** Ensure theme_stream_position metaobject definition exists on the shop. Creates via GraphQL if TOML deploy didn't. */
+/**
+ * Ensure theme_stream_position metaobject definition exists with correct
+ * fields (name, description, position_handle) and displayNameKey = "name".
+ */
 export async function ensureSchedulerPositionDefinition(admin) {
   try {
     const checkRes = await admin.graphql(
       `#graphql
       query($type: String!) {
         metaobjectDefinitionByType(type: $type) {
-          id
-          type
-          name
-          displayNameKey
+          id type name displayNameKey
+          fieldDefinitions { key name type { name } }
         }
-      }
-    `,
+      }`,
       { variables: { type: METAOBJECT_TYPE } },
     );
     const checkJson = await checkRes.json();
     const def = checkJson?.data?.metaobjectDefinitionByType;
+
     if (def?.id) {
-      logger.info("[theme_stream_position] metaobject definition exists: type=%s id=%s", def.type, def.id);
-      if (def.displayNameKey !== "name") {
+      logger.info("[position_def] exists: type=%s id=%s", def.type, def.id);
+      const updates = [];
+      if (def.displayNameKey !== "name") updates.push("displayNameKey");
+      const existingKeys = (def.fieldDefinitions || []).map((f) => f.key);
+      const fieldUpdates = [];
+      if (!existingKeys.includes("position_handle")) {
+        fieldUpdates.push({
+          create: { key: "position_handle", name: "Position Handle", type: "single_line_text_field" },
+        });
+      }
+      if (updates.length || fieldUpdates.length) {
         try {
+          const defInput = {};
+          if (updates.includes("displayNameKey")) defInput.displayNameKey = "name";
+          if (fieldUpdates.length) defInput.fieldDefinitions = fieldUpdates;
           await admin.graphql(
             `#graphql
             mutation($id: ID!, $definition: MetaobjectDefinitionUpdateInput!) {
@@ -37,26 +50,25 @@ export async function ensureSchedulerPositionDefinition(admin) {
                 userErrors { field message }
               }
             }`,
-            { variables: { id: def.id, definition: { displayNameKey: "name" } } },
+            { variables: { id: def.id, definition: defInput } },
           );
-          logger.info("[theme_stream_position] Set displayNameKey to 'name'");
+          logger.info("[position_def] Updated definition: %s", updates.concat(fieldUpdates.map((f) => f.create?.key)).join(", "));
         } catch (e) {
-          logger.warn("[theme_stream_position] Could not set displayNameKey:", e);
+          logger.warn("[position_def] Could not update definition:", e);
         }
       }
       return { ok: true };
     }
-    logger.warn("[theme_stream_position] metaobject definition NOT found for type=%s. checkJson=%s", METAOBJECT_TYPE, JSON.stringify(checkJson));
-    logger.info("Creating theme_stream_position metaobject definition");
+
+    logger.info("[position_def] Creating theme_stream_position definition");
     const createRes = await admin.graphql(
       `#graphql
-      mutation CreateSchedulerPositionDefinition($definition: MetaobjectDefinitionCreateInput!) {
+      mutation($definition: MetaobjectDefinitionCreateInput!) {
         metaobjectDefinitionCreate(definition: $definition) {
           metaobjectDefinition { id type name }
           userErrors { field message }
         }
-      }
-    `,
+      }`,
       {
         variables: {
           definition: {
@@ -66,6 +78,7 @@ export async function ensureSchedulerPositionDefinition(admin) {
             fieldDefinitions: [
               { key: "name", name: "Name", type: "single_line_text_field" },
               { key: "description", name: "Description", type: "multi_line_text_field" },
+              { key: "position_handle", name: "Position Handle", type: "single_line_text_field" },
             ],
             access: { admin: "MERCHANT_READ_WRITE", storefront: "PUBLIC_READ" },
           },
@@ -77,21 +90,20 @@ export async function ensureSchedulerPositionDefinition(admin) {
     if (errs?.length) {
       const msg = errs.map((e) => e.message).join(", ");
       if (msg.includes("taken") || msg.includes("TAKEN") || msg.includes("already exists")) {
-        logger.debug("theme_stream_position definition already exists (from TOML or prior create)");
         return { ok: true };
       }
-      logger.warn("ensureSchedulerPositionDefinition errors:", errs);
+      logger.warn("[position_def] create errors:", errs);
       return { ok: false, error: msg };
     }
-    logger.info("Created theme_stream_position metaobject definition");
+    logger.info("[position_def] Created successfully");
     return { ok: true };
   } catch (e) {
-    logger.error("ensureSchedulerPositionDefinition error:", e);
+    logger.error("[position_def] error:", e);
     return { ok: false, error: e.message };
   }
 }
 
-/** Fetch all existing position metaobjects in one paginated query */
+/** Fetch all existing position metaobjects with pagination */
 async function fetchAllPositionMetaobjects(admin) {
   const all = [];
   let after = null;
@@ -116,205 +128,128 @@ async function fetchAllPositionMetaobjects(admin) {
   return all;
 }
 
-/** Remove duplicate position metaobjects. Dedup by handle AND by name field. */
-async function deduplicatePositionMetaobjects(admin, existing, positions) {
-  const positionHandles = new Set((positions || []).map((p) => p.handle));
-
-  logger.info("[dedup] Found %d existing position metaobject(s):", existing.length);
-  for (const mo of existing) {
-    const nameField = (mo.fields || []).find((f) => f.key === "name");
-    logger.info("[dedup]   handle=%s name=%s id=%s", mo.handle, nameField?.value, mo.id);
-  }
-
-  const keepByHandle = new Map();
-  const toDelete = [];
-
-  for (const mo of existing) {
-    const nameField = (mo.fields || []).find((f) => f.key === "name");
-    const name = nameField?.value || "";
-
-    if (keepByHandle.has(mo.handle)) {
-      toDelete.push(mo);
-    } else {
-      const existingByName = [...keepByHandle.values()].find((kept) => {
-        const keptName = (kept.fields || []).find((f) => f.key === "name");
-        return keptName?.value === name;
-      });
-      if (existingByName) {
-        if (positionHandles.has(mo.handle) && !positionHandles.has(existingByName.handle)) {
-          toDelete.push(existingByName);
-          keepByHandle.delete(existingByName.handle);
-          keepByHandle.set(mo.handle, mo);
-        } else {
-          toDelete.push(mo);
-        }
-      } else {
-        keepByHandle.set(mo.handle, mo);
-      }
-    }
-  }
-
-  for (const dup of toDelete) {
-    try {
-      const delRes = await admin.graphql(
-        `#graphql
-        mutation($id: ID!) { metaobjectDelete(id: $id) { deletedId userErrors { field message } } }`,
-        { variables: { id: dup.id } },
-      );
-      const delJson = await delRes.json();
-      const errs = delJson?.data?.metaobjectDelete?.userErrors;
-      if (errs?.length) {
-        logger.warn("[dedup] Delete errors for handle=%s: %s", dup.handle, JSON.stringify(errs));
-      } else {
-        logger.info("[dedup] Deleted duplicate: handle=%s id=%s", dup.handle, dup.id);
-      }
-    } catch (e) {
-      logger.warn("[dedup] Failed to delete duplicate:", dup.handle, e);
-    }
-  }
-  if (toDelete.length) {
-    logger.info("[dedup] Removed %d duplicate position metaobject(s)", toDelete.length);
-  } else {
-    logger.info("[dedup] No duplicates found");
-  }
-  return keepByHandle;
+function getField(mo, key) {
+  return (mo.fields || []).find((f) => f.key === key)?.value || "";
 }
 
-/** Sync all positions to metaobjects. Fetches all existing first to avoid race conditions. */
+/**
+ * Sync all DB positions to metaobjects.
+ *
+ * Strategy: match existing metaobjects to positions by the position_handle
+ * field (falling back to name match). This avoids the Shopify handle-suffixing
+ * problem. We never delete-and-recreate — instead we reuse existing metaobjects
+ * and update their fields. Only truly orphaned metaobjects (matching no position
+ * by handle or name) are deleted.
+ */
 export async function syncAllPositionsToMetaobjects(admin, positions) {
   let existing;
   try {
     existing = await fetchAllPositionMetaobjects(admin);
   } catch (e) {
-    logger.warn("syncAllPositionsToMetaobjects: failed to fetch existing metaobjects:", e);
+    logger.warn("[sync] Failed to fetch existing metaobjects:", e);
     return;
   }
 
-  const byHandle = await deduplicatePositionMetaobjects(admin, existing, positions);
-
-  const hasUncategorized = (positions || []).some((p) => p.handle === "uncategorized");
-  if (hasUncategorized && byHandle.has("homepage_banner")) {
-    await deletePositionMetaobject(admin, "homepage_banner");
-    byHandle.delete("homepage_banner");
+  logger.info("[sync] Found %d existing position metaobject(s)", existing.length);
+  for (const mo of existing) {
+    logger.info("[sync]   sysHandle=%s name=%s posHandle=%s id=%s",
+      mo.handle, getField(mo, "name"), getField(mo, "position_handle"), mo.id);
   }
 
-  const positionHandles = new Set((positions || []).map((p) => p.handle));
+  const positionsByHandle = new Map((positions || []).map((p) => [p.handle, p]));
 
-  for (const [handle, mo] of byHandle) {
-    if (!positionHandles.has(handle)) {
+  // Phase 1: Match each position to an existing metaobject.
+  // Priority: position_handle field match > name match.
+  const matched = new Map();
+  const usedMoIds = new Set();
+
+  for (const p of positions || []) {
+    let best = null;
+    for (const mo of existing) {
+      if (usedMoIds.has(mo.id)) continue;
+      if (getField(mo, "position_handle") === p.handle) { best = mo; break; }
+    }
+    if (!best) {
+      for (const mo of existing) {
+        if (usedMoIds.has(mo.id)) continue;
+        if (getField(mo, "name") === p.name) { best = mo; break; }
+      }
+    }
+    if (best) {
+      matched.set(p.handle, best);
+      usedMoIds.add(best.id);
+    }
+  }
+
+  // Phase 2: Delete unmatched (orphan) metaobjects
+  for (const mo of existing) {
+    if (usedMoIds.has(mo.id)) continue;
+    try {
+      await admin.graphql(
+        `#graphql
+        mutation($id: ID!) { metaobjectDelete(id: $id) { deletedId userErrors { field message } } }`,
+        { variables: { id: mo.id } },
+      );
+      logger.info("[sync] Deleted orphan: sysHandle=%s name=%s", mo.handle, getField(mo, "name"));
+    } catch (e) {
+      logger.warn("[sync] Failed to delete orphan:", mo.handle, e);
+    }
+  }
+
+  // Phase 3: Update matched or create new metaobjects
+  for (const p of positions || []) {
+    const fields = [
+      { key: "name", value: p.name },
+      { key: "position_handle", value: p.handle },
+      ...(p.description != null ? [{ key: "description", value: p.description || "" }] : []),
+    ];
+
+    const mo = matched.get(p.handle);
+    if (mo) {
       try {
         await admin.graphql(
           `#graphql
-          mutation($id: ID!) { metaobjectDelete(id: $id) { deletedId userErrors { field message } } }`,
-          { variables: { id: mo.id } },
+          mutation($id: ID!, $metaobject: MetaobjectUpdateInput!) {
+            metaobjectUpdate(id: $id, metaobject: $metaobject) {
+              metaobject { id }
+              userErrors { field message }
+            }
+          }`,
+          { variables: { id: mo.id, metaobject: { fields } } },
         );
-        logger.info("[sync] Removed orphan position metaobject: handle=%s", handle);
+        logger.info("[sync] Updated: %s (sysHandle=%s)", p.handle, mo.handle);
       } catch (e) {
-        logger.warn("[sync] Failed to remove orphan:", handle, e);
+        logger.warn("[sync] Failed to update:", p.handle, e);
+      }
+    } else {
+      try {
+        const res = await admin.graphql(
+          `#graphql
+          mutation($handle: MetaobjectHandleInput!, $metaobject: MetaobjectUpsertInput!) {
+            metaobjectUpsert(handle: $handle, metaobject: $metaobject) {
+              metaobject { id handle }
+              userErrors { field message }
+            }
+          }`,
+          {
+            variables: {
+              handle: { type: METAOBJECT_TYPE, handle: p.handle },
+              metaobject: { fields },
+            },
+          },
+        );
+        const json = await res.json();
+        const errs = json?.data?.metaobjectUpsert?.userErrors;
+        if (errs?.length) {
+          logger.warn("[sync] Upsert errors for %s: %s", p.handle, JSON.stringify(errs));
+        } else {
+          const created = json?.data?.metaobjectUpsert?.metaobject;
+          logger.info("[sync] Upserted: %s (sysHandle=%s)", p.handle, created?.handle);
+        }
+      } catch (e) {
+        logger.warn("[sync] Failed to upsert:", p.handle, e);
       }
     }
-  }
-
-  for (const p of positions || []) {
-    try {
-      if (byHandle.has(p.handle)) {
-        await updatePositionMetaobject(admin, p);
-      } else {
-        await syncPositionToMetaobject(admin, p);
-      }
-    } catch (e) {
-      logger.warn("syncAllPositionsToMetaobjects:", p.handle, e);
-    }
-  }
-}
-
-/** Create metaobject entry for a position */
-export async function syncPositionToMetaobject(admin, position) {
-  try {
-    const res = await admin.graphql(
-      `#graphql
-      mutation CreatePositionMetaobject($metaobject: MetaobjectCreateInput!) {
-        metaobjectCreate(metaobject: $metaobject) {
-          metaobject { id handle }
-          userErrors { field message }
-        }
-      }`,
-      {
-        variables: {
-          metaobject: {
-            type: METAOBJECT_TYPE,
-            handle: position.handle,
-            fields: [
-              { key: "name", value: position.name },
-              ...(position.description ? [{ key: "description", value: position.description }] : []),
-            ],
-          },
-        },
-      },
-    );
-    const json = await res.json();
-    const errs = json?.data?.metaobjectCreate?.userErrors;
-    if (errs?.length) {
-      logger.warn("syncPositionToMetaobject create errors:", errs);
-      return null;
-    }
-    return json?.data?.metaobjectCreate?.metaobject;
-  } catch (e) {
-    logger.warn("syncPositionToMetaobject create error:", e);
-    return null;
-  }
-}
-
-/** Update metaobject entry for a position (lookup by handle) */
-export async function updatePositionMetaobject(admin, position) {
-  try {
-    const listRes = await admin.graphql(
-      `#graphql
-      query FindPositionMetaobject($handle: MetaobjectHandleInput!) {
-        metaobjectByHandle(handle: $handle) {
-          id
-        }
-      }`,
-      {
-        variables: {
-          handle: { type: METAOBJECT_TYPE, handle: position.handle },
-        },
-      },
-    );
-    const listJson = await listRes.json();
-    const node = listJson?.data?.metaobjectByHandle;
-    if (!node) return null;
-
-    const updateRes = await admin.graphql(
-      `#graphql
-      mutation UpdatePositionMetaobject($id: ID!, $metaobject: MetaobjectUpdateInput!) {
-        metaobjectUpdate(id: $id, metaobject: $metaobject) {
-          metaobject { id }
-          userErrors { field message }
-        }
-      }`,
-      {
-        variables: {
-          id: node.id,
-          metaobject: {
-            fields: [
-              { key: "name", value: position.name },
-              ...(position.description != null ? [{ key: "description", value: position.description || "" }] : []),
-            ],
-          },
-        },
-      },
-    );
-    const updateJson = await updateRes.json();
-    const errs = updateJson?.data?.metaobjectUpdate?.userErrors;
-    if (errs?.length) {
-      logger.warn("updatePositionMetaobject errors:", errs);
-      return null;
-    }
-    return updateJson?.data?.metaobjectUpdate?.metaobject;
-  } catch (e) {
-    logger.warn("updatePositionMetaobject error:", e);
-    return null;
   }
 }
 
@@ -323,16 +258,10 @@ export async function deletePositionMetaobject(admin, handle) {
   try {
     const listRes = await admin.graphql(
       `#graphql
-      query FindPositionMetaobject($handle: MetaobjectHandleInput!) {
-        metaobjectByHandle(handle: $handle) {
-          id
-        }
+      query($handle: MetaobjectHandleInput!) {
+        metaobjectByHandle(handle: $handle) { id }
       }`,
-      {
-        variables: {
-          handle: { type: METAOBJECT_TYPE, handle },
-        },
-      },
+      { variables: { handle: { type: METAOBJECT_TYPE, handle } } },
     );
     const listJson = await listRes.json();
     const node = listJson?.data?.metaobjectByHandle;
@@ -340,23 +269,20 @@ export async function deletePositionMetaobject(admin, handle) {
 
     const delRes = await admin.graphql(
       `#graphql
-      mutation DeletePositionMetaobject($id: ID!) {
-        metaobjectDelete(id: $id) {
-          deletedId
-          userErrors { field message }
-        }
+      mutation($id: ID!) {
+        metaobjectDelete(id: $id) { deletedId userErrors { field message } }
       }`,
       { variables: { id: node.id } },
     );
     const delJson = await delRes.json();
     const errs = delJson?.data?.metaobjectDelete?.userErrors;
     if (errs?.length) {
-      logger.warn("deletePositionMetaobject errors:", errs);
+      logger.warn("[sync] deletePositionMetaobject errors:", errs);
       return false;
     }
     return true;
   } catch (e) {
-    logger.warn("deletePositionMetaobject error:", e);
+    logger.warn("[sync] deletePositionMetaobject error:", e);
     return false;
   }
 }

@@ -5,9 +5,11 @@
 
 {% comment %} Store-owned metaobjects. Use metaobjects.type.values to loop all entries. {% endcomment %}
 {% assign all_entries = metaobjects.theme_stream_schedulable_entity.values %}
-{% comment %} position_id: metaobject picker returns metaobject; we need handle for matching. Fallback to text if block was configured before picker. {% endcomment %}
+{% comment %} Read the canonical handle from our position_handle field (not the system handle, which Shopify may suffix). {% endcomment %}
 {% assign position_ref = block.settings.position_id %}
-{% if position_ref != blank and position_ref.system != blank %}
+{% if position_ref != blank and position_ref.position_handle != blank %}
+  {% assign position_id = position_ref.position_handle.value | strip %}
+{% elsif position_ref != blank and position_ref.system != blank %}
   {% assign position_id = position_ref.system.handle | default: '' | strip %}
 {% else %}
   {% assign position_id = block.settings.position_id | default: 'uncategorized' | strip %}
