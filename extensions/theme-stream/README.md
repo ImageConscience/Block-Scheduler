@@ -33,6 +33,7 @@ Use these dimensions for best results across devices:
 
 ## Developer notes
 
-- The block reads metaobjects with type `theme_stream_schedulable_entity`. Ensure the app has created the definition and assigned entries before adding the block to a theme.
+- **Stream picker** – The block's "Stream" setting uses metaobject type `$app:theme_stream_position` (streams/positions). Merchants select a stream; the block then displays the currently scheduled entry for that stream based on date/time.
+- **Entries** – Scheduled content is stored as `theme_stream_schedulable_entity` metaobjects. Ensure the app has created the definition and assigned entries before adding the block to a theme.
 - All overlay logic now lives in CSS (`theme-stream__banner-content::before`), so there are no Liquid filters that depend on Shopify-specific helpers.
 - Run `shopify extension serve --directory=extensions/theme-stream` during development and `shopify extension deploy ...` when ready for production.
