@@ -31,7 +31,7 @@ use_legacy_install_flow = false
 
 [metaobjects.app.theme_stream_position]
 name = "Theme Stream Position"
-display_name_key = "name"
+display_name_field = "name"
 access.admin = "merchant_read_write"
 access.storefront = "public_read"
 
