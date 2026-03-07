@@ -116,33 +116,68 @@ async function fetchAllPositionMetaobjects(admin) {
   return all;
 }
 
-/** Remove duplicate position metaobjects, keeping the first per handle */
-async function deduplicatePositionMetaobjects(admin, existing) {
-  const seen = new Map();
-  const toDelete = [];
+/** Remove duplicate position metaobjects. Dedup by handle AND by name field. */
+async function deduplicatePositionMetaobjects(admin, existing, positions) {
+  const positionHandles = new Set((positions || []).map((p) => p.handle));
+
+  logger.info("[dedup] Found %d existing position metaobject(s):", existing.length);
   for (const mo of existing) {
-    if (seen.has(mo.handle)) {
+    const nameField = (mo.fields || []).find((f) => f.key === "name");
+    logger.info("[dedup]   handle=%s name=%s id=%s", mo.handle, nameField?.value, mo.id);
+  }
+
+  const keepByHandle = new Map();
+  const toDelete = [];
+
+  for (const mo of existing) {
+    const nameField = (mo.fields || []).find((f) => f.key === "name");
+    const name = nameField?.value || "";
+
+    if (keepByHandle.has(mo.handle)) {
       toDelete.push(mo);
     } else {
-      seen.set(mo.handle, mo);
+      const existingByName = [...keepByHandle.values()].find((kept) => {
+        const keptName = (kept.fields || []).find((f) => f.key === "name");
+        return keptName?.value === name;
+      });
+      if (existingByName) {
+        if (positionHandles.has(mo.handle) && !positionHandles.has(existingByName.handle)) {
+          toDelete.push(existingByName);
+          keepByHandle.delete(existingByName.handle);
+          keepByHandle.set(mo.handle, mo);
+        } else {
+          toDelete.push(mo);
+        }
+      } else {
+        keepByHandle.set(mo.handle, mo);
+      }
     }
   }
+
   for (const dup of toDelete) {
     try {
-      await admin.graphql(
+      const delRes = await admin.graphql(
         `#graphql
         mutation($id: ID!) { metaobjectDelete(id: $id) { deletedId userErrors { field message } } }`,
         { variables: { id: dup.id } },
       );
-      logger.info("[dedup] Deleted duplicate position metaobject: handle=%s id=%s", dup.handle, dup.id);
+      const delJson = await delRes.json();
+      const errs = delJson?.data?.metaobjectDelete?.userErrors;
+      if (errs?.length) {
+        logger.warn("[dedup] Delete errors for handle=%s: %s", dup.handle, JSON.stringify(errs));
+      } else {
+        logger.info("[dedup] Deleted duplicate: handle=%s id=%s", dup.handle, dup.id);
+      }
     } catch (e) {
       logger.warn("[dedup] Failed to delete duplicate:", dup.handle, e);
     }
   }
   if (toDelete.length) {
     logger.info("[dedup] Removed %d duplicate position metaobject(s)", toDelete.length);
+  } else {
+    logger.info("[dedup] No duplicates found");
   }
-  return seen;
+  return keepByHandle;
 }
 
 /** Sync all positions to metaobjects. Fetches all existing first to avoid race conditions. */
@@ -155,7 +190,7 @@ export async function syncAllPositionsToMetaobjects(admin, positions) {
     return;
   }
 
-  const byHandle = await deduplicatePositionMetaobjects(admin, existing);
+  const byHandle = await deduplicatePositionMetaobjects(admin, existing, positions);
 
   const hasUncategorized = (positions || []).some((p) => p.handle === "uncategorized");
   if (hasUncategorized && byHandle.has("homepage_banner")) {
