@@ -253,6 +253,42 @@ export async function syncAllPositionsToMetaobjects(admin, positions) {
   }
 }
 
+/** Upsert a single position metaobject (used when creating/updating a position). */
+export async function upsertPositionMetaobject(admin, position) {
+  const fields = [
+    { key: "name", value: position.name },
+    { key: "position_handle", value: position.handle },
+    ...(position.description != null ? [{ key: "description", value: position.description || "" }] : []),
+  ];
+  try {
+    const res = await admin.graphql(
+      `#graphql
+      mutation($handle: MetaobjectHandleInput!, $metaobject: MetaobjectUpsertInput!) {
+        metaobjectUpsert(handle: $handle, metaobject: $metaobject) {
+          metaobject { id handle }
+          userErrors { field message }
+        }
+      }`,
+      {
+        variables: {
+          handle: { type: METAOBJECT_TYPE, handle: position.handle },
+          metaobject: { fields },
+        },
+      },
+    );
+    const json = await res.json();
+    const errs = json?.data?.metaobjectUpsert?.userErrors;
+    if (errs?.length) {
+      logger.warn("[upsert] errors for %s: %s", position.handle, JSON.stringify(errs));
+      return null;
+    }
+    return json?.data?.metaobjectUpsert?.metaobject;
+  } catch (e) {
+    logger.warn("[upsert] error for %s:", position.handle, e);
+    return null;
+  }
+}
+
 /** Delete metaobject entry by handle */
 export async function deletePositionMetaobject(admin, handle) {
   try {

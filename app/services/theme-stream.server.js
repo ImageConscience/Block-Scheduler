@@ -516,8 +516,8 @@ export const action = async ({ request }) => {
           name,
           description: (body.description || "").trim() || null,
         });
-        const { syncPositionToMetaobject } = await import("./positions-metaobject.server.js");
-        await syncPositionToMetaobject(admin, position);
+        const { upsertPositionMetaobject } = await import("./positions-metaobject.server.js");
+        await upsertPositionMetaobject(admin, position);
         return json({ success: true, message: "Position created!", position: { id: position.id, name: position.name, handle: position.handle, description: position.description } });
       }
 
@@ -531,8 +531,8 @@ export const action = async ({ request }) => {
           description: body.description !== undefined ? (body.description ? String(body.description).trim() : null) : undefined,
         });
         if (!updated) return json({ error: "Position not found", success: false });
-        const { updatePositionMetaobject } = await import("./positions-metaobject.server.js");
-        await updatePositionMetaobject(admin, updated);
+        const { upsertPositionMetaobject } = await import("./positions-metaobject.server.js");
+        await upsertPositionMetaobject(admin, updated);
         return json({ success: true, message: "Position updated!", position: updated });
       }
 
