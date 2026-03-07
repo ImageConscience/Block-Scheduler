@@ -52,6 +52,46 @@ export async function fetchAllMetaobjects(admin) {
   return allNodes;
 }
 
+/** Reassign all entries with a given position_id to a new handle. */
+export async function reassignEntriesToPosition(admin, fromHandle, toHandle) {
+  const nodes = await fetchAllMetaobjects(admin);
+  const toUpdate = (nodes || []).filter((n) => {
+    const posField = (n.fields || []).find((f) => f.key === "position_id");
+    return posField && String(posField.value || "").trim() === fromHandle;
+  });
+  if (toUpdate.length === 0) return 0;
+  logger.info("[reassign] Moving %d entries from '%s' to '%s'", toUpdate.length, fromHandle, toHandle);
+  let updated = 0;
+  for (const node of toUpdate) {
+    try {
+      const res = await admin.graphql(
+        `#graphql
+        mutation UpdatePositionId($id: ID!, $metaobject: MetaobjectUpdateInput!) {
+          metaobjectUpdate(id: $id, metaobject: $metaobject) {
+            metaobject { id }
+            userErrors { field message }
+          }
+        }`,
+        {
+          variables: {
+            id: node.id,
+            metaobject: { fields: [{ key: "position_id", value: toHandle }] },
+          },
+        },
+      );
+      const json = await res.json();
+      if (json?.data?.metaobjectUpdate?.userErrors?.length) {
+        logger.warn("[reassign] Failed to update entry", node.id, json.data.metaobjectUpdate.userErrors);
+      } else {
+        updated++;
+      }
+    } catch (e) {
+      logger.warn("[reassign] Error updating entry", node.id, e);
+    }
+  }
+  return updated;
+}
+
 /** Migrate theme_stream_schedulable_entity entries with position_id "homepage_banner" to "uncategorized". */
 export async function migratePositionIdInEntries(admin, nodes) {
   const toMigrate = (nodes || []).filter((n) => {

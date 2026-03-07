@@ -543,6 +543,8 @@ export const action = async ({ request }) => {
         const { deletePosition } = await import("./positions.server.js");
         const deleted = await deletePosition(shop, body.id);
         if (!deleted) return json({ error: "Position not found", success: false });
+        const { reassignEntriesToPosition } = await import("./theme-stream-data.server.js");
+        await reassignEntriesToPosition(admin, deleted.handle, "uncategorized");
         const { deletePositionMetaobject } = await import("./positions-metaobject.server.js");
         await deletePositionMetaobject(admin, deleted.handle);
         return json({ success: true, message: "Position deleted!" });
